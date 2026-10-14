@@ -15,6 +15,6 @@ One continuous interaction built from the three studies in this repository
 Each step unlocks only after the previous one succeeds. Reset (bottom right) returns to the hanging seed.
 Keyboard: Enter drops the seed, the Up arrow grows the flower, holding Space pulls it.
 
-The site lives in [`docs/`](docs/) as plain HTML, CSS and JavaScript, with no dependencies or build step,
-so the files there are both the editable source and what GitHub Pages serves.
+The site is a single self-contained file, [`docs/index.html`](docs/index.html) (HTML, CSS and JavaScript inline, no dependencies or build step),
+so it is both the editable source and what GitHub Pages serves, and it also works when opened on its own.
 To publish it, set **Settings → Pages → Build and deployment** to *Deploy from a branch*, branch `main`, folder `/docs`.

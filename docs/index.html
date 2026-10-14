@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Seed to Flower</title>
+  <meta name="description" content="Interaction prototype: plant a seed, stretch it into a flower, then pick the flower.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <h1 class="sr-only">Seed to Flower</h1>
+  <p id="hint" class="hint" aria-live="polite">Drag the seed over the hole</p>
+
+  <svg id="scene" data-stage="plant" viewBox="45 70 230 430" preserveAspectRatio="xMidYMid meet" tabindex="0"
+       role="img" aria-label="A seed hanging above a patch of soil. Drag it over the hole and let go, or press Enter to drop it.">
+    <defs>
+      <!-- seed.svg -->
+      <radialGradient id="seedBody" cx="40%" cy="35%" r="70%">
+        <stop offset="0%" stop-color="#d9d9d9"/>
+        <stop offset="60%" stop-color="#8c8c8c"/>
+        <stop offset="100%" stop-color="#4a4a4a"/>
+      </radialGradient>
+      <!-- soil-hole.svg -->
+      <radialGradient id="soilFill" cx="50%" cy="45%" r="60%">
+        <stop offset="0%" stop-color="#9a9a9a"/>
+        <stop offset="100%" stop-color="#6e6e6e"/>
+      </radialGradient>
+      <radialGradient id="holeFill" cx="50%" cy="35%" r="65%">
+        <stop offset="0%" stop-color="#1a1a1a"/>
+        <stop offset="70%" stop-color="#2e2e2e"/>
+        <stop offset="100%" stop-color="#4a4a4a"/>
+      </radialGradient>
+      <!-- plant.svg -->
+      <linearGradient id="petalGrad" x1="0" y1="1" x2="0" y2="0">
+        <stop offset="0%" stop-color="#9e9e9e"/>
+        <stop offset="35%" stop-color="#d4d4d4"/>
+        <stop offset="100%" stop-color="#f4f4f4"/>
+      </linearGradient>
+      <linearGradient id="innerGrad" x1="0" y1="1" x2="0" y2="0">
+        <stop offset="0%" stop-color="#8a8a8a"/>
+        <stop offset="60%" stop-color="#c6c6c6"/>
+        <stop offset="100%" stop-color="#e2e2e2"/>
+      </linearGradient>
+      <linearGradient id="leafGradL" x1="1" y1="0.5" x2="0" y2="0.5">
+        <stop offset="0%" stop-color="#5e5e5e"/>
+        <stop offset="100%" stop-color="#a3a3a3"/>
+      </linearGradient>
+      <linearGradient id="leafGradR" x1="0" y1="0.5" x2="1" y2="0.5">
+        <stop offset="0%" stop-color="#666"/>
+        <stop offset="100%" stop-color="#b0b0b0"/>
+      </linearGradient>
+      <linearGradient id="leafUnder" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#4c4c4c"/>
+        <stop offset="100%" stop-color="#6e6e6e"/>
+      </linearGradient>
+      <radialGradient id="centerGrad" cx="42%" cy="38%" r="65%">
+        <stop offset="0%" stop-color="#6a6a6a"/>
+        <stop offset="70%" stop-color="#383838"/>
+        <stop offset="100%" stop-color="#1e1e1e"/>
+      </radialGradient>
+      <linearGradient id="budGrad" x1="0" y1="1" x2="0" y2="0">
+        <stop offset="0%" stop-color="#8e8e8e"/>
+        <stop offset="100%" stop-color="#dcdcdc"/>
+      </linearGradient>
+      <linearGradient id="sepalGrad" x1="0" y1="1" x2="0" y2="0">
+        <stop offset="0%" stop-color="#4a4a4a"/>
+        <stop offset="100%" stop-color="#7c7c7c"/>
+      </linearGradient>
+      <!-- Pick a Flower: drop shadow while the head is held -->
+      <filter id="lift" x="-40%" y="-40%" width="180%" height="190%">
+        <feDropShadow dx="0" dy="7" stdDeviation="5" flood-color="#000" flood-opacity=".16"/>
+      </filter>
+      <!-- Everything above the hole's front lip stays visible; below it, only the opening shows. -->
+      <clipPath id="aboveGround" clipPathUnits="userSpaceOnUse">
+        <rect x="-2000" y="-2000" width="4320" height="2445"/>
+        <ellipse cx="160" cy="445" rx="30" ry="11"/>
+      </clipPath>
+    </defs>
+
+    <!-- SOIL PATCH WITH HOLE (soil-hole.svg, hole centered at 160,445) -->
+    <g transform="translate(40 350)">
+      <path d="M22 98 C 20 78, 52 62, 86 60 C 110 54, 142 56, 166 62 C 200 66, 222 82, 218 100 C 216 118, 190 128, 156 130 C 126 134, 96 134, 70 130 C 40 126, 24 114, 22 98 Z"
+            fill="url(#soilFill)" stroke="#555555" stroke-width="1.5"/>
+      <g fill="#7d7d7d" stroke="#5a5a5a" stroke-width="1">
+        <ellipse cx="62" cy="80" rx="7" ry="4"/>
+        <ellipse cx="170" cy="78" rx="8" ry="4.5"/>
+        <ellipse cx="186" cy="108" rx="6" ry="3.5"/>
+        <ellipse cx="54" cy="110" rx="6" ry="3.5"/>
+        <ellipse cx="118" cy="122" rx="5" ry="3"/>
+      </g>
+      <g fill="#5c5c5c" opacity="0.6">
+        <circle cx="44" cy="96" r="1.5"/><circle cx="78" cy="70" r="1.2"/>
+        <circle cx="150" cy="68" r="1.4"/><circle cx="200" cy="94" r="1.3"/>
+        <circle cx="96" cy="124" r="1.2"/><circle cx="160" cy="120" r="1.5"/>
+        <circle cx="72" cy="118" r="1"/><circle cx="196" cy="84" r="1"/>
+      </g>
+      <ellipse cx="120" cy="94" rx="40" ry="17" fill="#8a8a8a" stroke="#5e5e5e" stroke-width="1.5"/>
+      <ellipse id="rimGlow" cx="120" cy="94" rx="40" ry="17" fill="#ffffff" stroke="#d6d6d6" stroke-width="1.5" opacity="0"/>
+      <ellipse cx="120" cy="95" rx="30" ry="11" fill="url(#holeFill)"/>
+      <path d="M92 93 C 100 86, 140 86, 148 93" fill="none" stroke="#6a6a6a" stroke-width="1.5" opacity="0.7"/>
+    </g>
+
+    <!-- SEED (seed.svg). Wrappers: clip (in-hole), shade (depth + fade-in), position + hover scale, squash/stretch -->
+    <g id="seedClip">
+      <g id="seedShade">
+        <g id="seed">
+          <g id="seedArt">
+            <ellipse class="focus-ring" cx="100" cy="98" rx="62" ry="80" fill="none" stroke="#9a9a9a" stroke-width="5" stroke-dasharray="10 10"/>
+            <path d="M100 28 C 130 52, 148 92, 146 122 C 144 150, 124 164, 100 164 C 76 164, 56 150, 54 122 C 52 92, 70 52, 100 28 Z"
+                  fill="url(#seedBody)" stroke="#333333" stroke-width="5"/>
+            <path d="M100 36 C 94 70, 94 120, 100 158" fill="none" stroke="#3d3d3d" stroke-width="5" stroke-linecap="round" opacity="0.7"/>
+            <path d="M82 62 C 72 80, 68 100, 70 118" fill="none" stroke="#f2f2f2" stroke-width="8" stroke-linecap="round" opacity="0.6"/>
+            <ellipse cx="100" cy="156" rx="7" ry="3.5" fill="#2b2b2b" opacity="0.8"/>
+          </g>
+          <!-- pointed shoot at the seed tip (Grow a Flower), in the seed's bottom-center frame -->
+          <path id="seedShoot" transform="translate(-160 -453.5)" opacity="0"
+                d="M160 411.5 C 156.6 406, 157.4 399.5, 161.6 394.5 C 163.6 399.5, 163.4 406, 160.8 411.5 Z"
+                fill="#7a7a7a" stroke="#333333" stroke-width="1.1" stroke-linejoin="round"/>
+        </g>
+      </g>
+    </g>
+
+    <!-- PLANT (plant.svg parts, positioned live) -->
+    <g id="plant" clip-path="url(#aboveGround)">
+      <g id="stem" fill="none" stroke-linecap="round">
+        <path id="stemA" stroke="#3e3e3e" stroke-width="8.4"/>
+        <path id="stemB" stroke="#6c6c6c" stroke-width="4.5"/>
+        <path id="stemC" stroke="#a8a8a8" stroke-width="1.4" opacity="0.8"/>
+      </g>
+
+      <g id="leafL" opacity="0">
+        <path d="M98 210 C82 206 60 210 40 206 C58 222 84 222 98 210 Z" fill="url(#leafUnder)"/>
+        <path d="M98 210 C86 188 58 182 30 196 C42 200 52 206 60 210 C76 216 90 214 98 210 Z"
+              fill="url(#leafGradL)" stroke="#2f2f2f" stroke-width="1.6" stroke-linejoin="round"/>
+        <path d="M98 210 C82 204 58 200 34 197" fill="none" stroke="#3a3a3a" stroke-width="1.3" stroke-linecap="round"/>
+        <g fill="none" stroke="#4a4a4a" stroke-width="0.8" stroke-linecap="round">
+          <path d="M86 206 C84 199 80 194 76 191"/><path d="M74 203 C71 196 66 191 61 189"/>
+          <path d="M62 201 C58 195 53 191 48 190"/><path d="M84 207 C80 211 76 213 72 214"/>
+          <path d="M70 204 C66 208 61 210 56 210"/>
+        </g>
+        <path d="M90 196 C78 188 60 186 44 192" fill="none" stroke="#cfcfcf" stroke-width="1.4" stroke-linecap="round" opacity="0.6"/>
+      </g>
+      <g id="leafR" opacity="0">
+        <path d="M99 170 C116 166 138 172 158 166 C140 182 114 182 99 170 Z" fill="url(#leafUnder)"/>
+        <path d="M99 170 C112 148 140 142 170 154 C158 160 148 166 140 170 C124 176 108 174 99 170 Z"
+              fill="url(#leafGradR)" stroke="#2f2f2f" stroke-width="1.6" stroke-linejoin="round"/>
+        <path d="M99 170 C116 164 140 160 166 155" fill="none" stroke="#3a3a3a" stroke-width="1.3" stroke-linecap="round"/>
+        <g fill="none" stroke="#4a4a4a" stroke-width="0.8" stroke-linecap="round">
+          <path d="M112 166 C114 159 118 154 122 151"/><path d="M124 163 C127 156 132 151 137 149"/>
+          <path d="M137 161 C141 155 146 151 151 150"/><path d="M114 167 C118 171 122 173 126 174"/>
+          <path d="M128 164 C132 168 137 170 142 170"/>
+        </g>
+        <path d="M108 156 C120 148 138 146 154 152" fill="none" stroke="#d6d6d6" stroke-width="1.4" stroke-linecap="round" opacity="0.6"/>
+      </g>
+
+      <!-- Flower head lives here while attached -->
+      <g id="below">
+        <!-- HEAD: everything that rides on the stem tip, in plant.svg coordinates (tip = 100,112) -->
+        <g id="head">
+          <g id="headPop"><g id="headGrow">
+            <g id="petals"></g>
+            <g id="flowerCenter" opacity="0">
+              <circle cx="100" cy="100" r="15" fill="#9a9a9a" opacity="0.35"/>
+              <circle cx="100" cy="100" r="13" fill="url(#centerGrad)" stroke="#1a1a1a" stroke-width="1.4"/>
+              <g><circle cx="98.86" cy="101.05" r="0.56" fill="#989898"/><circle cx="100.19" cy="97.82" r="0.57" fill="#979797"/><circle cx="101.63" cy="102.13" r="0.58" fill="#959595"/><circle cx="96.95" cy="99.46" r="0.58" fill="#949494"/><circle cx="102.92" cy="98.14" r="0.59" fill="#939393"/><circle cx="99.01" cy="103.67" r="0.60" fill="#919191"/><circle cx="98.11" cy="96.36" r="0.61" fill="#909090"/><circle cx="104.12" cy="101.50" r="0.62" fill="#8e8e8e"/><circle cx="95.70" cy="101.77" r="0.63" fill="#8d8d8d"/><circle cx="102.08" cy="95.56" r="0.64" fill="#8c8c8c"/><circle cx="101.54" cy="104.91" r="0.64" fill="#8a8a8a"/><circle cx="95.35" cy="97.31" r="0.65" fill="#898989"/><circle cx="105.46" cy="98.80" r="0.66" fill="#888888"/><circle cx="96.66" cy="104.74" r="0.67" fill="#868686"/><circle cx="99.23" cy="94.05" r="0.68" fill="#858585"/><circle cx="104.74" cy="104.00" r="0.69" fill="#838383"/><circle cx="93.61" cy="100.26" r="0.70" fill="#828282"/><circle cx="104.66" cy="95.36" r="0.71" fill="#818181"/><circle cx="99.69" cy="106.75" r="0.71" fill="#7f7f7f"/><circle cx="95.56" cy="94.68" r="0.72" fill="#7e7e7e"/><circle cx="107.04" cy="100.95" r="0.73" fill="#7d7d7d"/><circle cx="94.03" cy="104.15" r="0.74" fill="#7b7b7b"/><circle cx="101.63" cy="92.75" r="0.75" fill="#7a7a7a"/><circle cx="103.78" cy="106.59" r="0.76" fill="#787878"/><circle cx="92.62" cy="97.64" r="0.77" fill="#777777"/><circle cx="107.17" cy="96.69" r="0.77" fill="#767676"/><circle cx="96.89" cy="107.43" r="0.78" fill="#747474"/><circle cx="97.22" cy="92.28" r="0.79" fill="#737373"/><circle cx="107.39" cy="103.88" r="0.80" fill="#727272"/><circle cx="91.79" cy="102.16" r="0.81" fill="#707070"/><circle cx="104.67" cy="92.74" r="0.82" fill="#6f6f6f"/><circle cx="101.49" cy="108.64" r="0.83" fill="#6d6d6d"/><circle cx="92.96" cy="94.55" r="0.83" fill="#6c6c6c"/><circle cx="109.01" cy="99.25" r="0.84" fill="#6b6b6b"/><circle cx="93.77" cy="106.73" r="0.85" fill="#696969"/><circle cx="100.05" cy="90.70" r="0.86" fill="#686868"/><circle cx="106.33" cy="106.98" r="0.87" fill="#666666"/><circle cx="90.49" cy="99.12" r="0.88" fill="#656565"/><circle cx="107.71" cy="94.15" r="0.89" fill="#646464"/><circle cx="98.25" cy="109.64" r="0.89" fill="#626262"/><circle cx="94.71" cy="91.60" r="0.90" fill="#616161"/><circle cx="109.69" cy="102.66" r="0.91" fill="#606060"/><circle cx="90.96" cy="104.64" r="0.92" fill="#5e5e5e"/><circle cx="103.57" cy="90.36" r="0.93" fill="#5d5d5d"/><circle cx="103.92" cy="109.63" r="0.94" fill="#5b5b5b"/><circle cx="90.50" cy="95.50" r="0.95" fill="#5a5a5a"/><circle cx="110.15" cy="96.87" r="0.96" fill="#595959"/><circle cx="94.57" cy="109.26" r="0.96" fill="#575757"/><circle cx="97.72" cy="89.39" r="0.97" fill="#565656"/><circle cx="108.94" cy="106.35" r="0.98" fill="#555555"/><circle cx="89.02" cy="101.37" r="0.99" fill="#535353"/><circle cx="107.24" cy="91.49" r="1.00" fill="#525252"/><circle cx="100.41" cy="111.28" r="1.01" fill="#505050"/><circle cx="92.01" cy="91.89" r="1.02" fill="#4f4f4f"/><circle cx="111.48" cy="100.59" r="1.02" fill="#4e4e4e"/><circle cx="91.06" cy="107.39" r="1.03" fill="#4c4c4c"/><circle cx="101.62" cy="88.41" r="1.04" fill="#4b4b4b"/></g>
+              <ellipse cx="95" cy="94" rx="4" ry="2.4" fill="#ffffff" opacity="0.18" transform="rotate(-30 95 94)"/>
+            </g>
+            <g id="bud" opacity="0">
+              <path d="M100 112 C86 106 84 86 94 72 C98 68 100 66 100 66 C108 74 112 92 106 108 Z"
+                    fill="url(#budGrad)" stroke="#3a3a3a" stroke-width="1.5" stroke-linejoin="round"/>
+              <path d="M100 112 C112 106 116 88 108 74 C105 70 102 68 100 66 C96 76 94 94 98 110 Z"
+                    fill="url(#budGrad)" stroke="#3a3a3a" stroke-width="1.5" stroke-linejoin="round"/>
+              <path d="M99 108 C97 94 97 80 100 68" fill="none" stroke="#777" stroke-width="0.9"/>
+              <path d="M92 80 C91 76 93 72 96 70" fill="none" stroke="#f6f6f6" stroke-width="1.4" stroke-linecap="round" opacity="0.8"/>
+              <path d="M100 113 C88 114 82 106 82 94 C88 99 94 103 99 108 Z" fill="url(#sepalGrad)" stroke="#2c2c2c" stroke-width="1.2" stroke-linejoin="round"/>
+              <path d="M100 113 C112 114 118 106 118 94 C112 99 106 103 101 108 Z" fill="url(#sepalGrad)" stroke="#2c2c2c" stroke-width="1.2" stroke-linejoin="round"/>
+              <path d="M96 113 C94 104 96 96 100 90 C104 96 106 104 104 113 Z" fill="url(#sepalGrad)" stroke="#2c2c2c" stroke-width="1.2" stroke-linejoin="round"/>
+              <ellipse cx="100" cy="113" rx="5" ry="2.6" fill="#3a3a3a"/>
+            </g>
+            <!-- pointed growing tip (same shoot as on the seed) -->
+            <path id="tipShoot" d="M100 113.5 C 97.4 108.5, 98 102.5, 101.2 98 C 102.8 102.5, 102.6 108.5, 100.6 113.5 Z"
+                  fill="#7a7a7a" stroke="#333333" stroke-width="0.9" stroke-linejoin="round" opacity="0"/>
+          </g></g>
+        </g>
+      </g>
+
+      <!-- Pick a Flower draws the stem over the attached head to show the joint; fades in when picking unlocks -->
+      <use id="stemOver" href="#stem" opacity="0"/>
+
+      <!-- Stem half of the joint: a socket cup with a pale rim -->
+      <g id="socket" opacity="0">
+        <path d="M-6.8 1 C-6.4 4 -4.6 7 -3.6 11 L3.6 11 C4.6 7 6.4 4 6.8 1 Z" fill="url(#sepalGrad)" stroke="#262626" stroke-width="0.9" stroke-linejoin="round"/>
+        <ellipse cx="0" cy="0.9" rx="6.8" ry="2.1" fill="#b4b4b4" stroke="#333" stroke-width="0.8"/>
+      </g>
+    </g>
+
+    <!-- Flower head moves here once picked -->
+    <g id="above"></g>
+
+    <!-- Snap burst -->
+    <g id="fx" pointer-events="none">
+      <circle id="ring" r="0" fill="none" stroke="#4a4a4a" opacity="0"/>
+      <g id="ticks" stroke="#4a4a4a" stroke-linecap="round"></g>
+    </g>
+
+    <!-- Flower half of the joint: a dark stud under the center -->
+    <g id="stud" pointer-events="none" opacity="0">
+      <g id="studPop"><g id="studGrow"><g id="studShift">
+        <ellipse cx="100" cy="110.4" rx="6.4" ry="2.5" fill="#262626" stroke="#141414" stroke-width="0.8"/>
+        <ellipse cx="98.2" cy="109.7" rx="2.4" ry="0.75" fill="#9a9a9a" opacity="0.55"/>
+      </g></g></g>
+    </g>
+  </svg>
+
+  <div class="controls">
+    <button class="reset" id="reset" type="button">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M2.8 8a5.2 5.2 0 1 0 1.6-3.75"/><path d="M2.6 2.2v2.9h2.9"/>
+      </svg>
+      Reset
+    </button>
+  </div>
+
+  <script src="sequence.js"></script>
+</body>
+</html>

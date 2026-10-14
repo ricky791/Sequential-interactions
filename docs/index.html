@@ -22,7 +22,7 @@
 html, body { height: 100%; }
 body {
   margin: 0;
-  background: var(--ground);
+  background: var(--ground) radial-gradient(ellipse 70% 60% at 50% 42%, #fcfcfb 0%, var(--ground) 60%, #ecece9 100%) fixed;
   color: var(--ink);
   font-family: var(--font-ui);
   overflow: hidden;
@@ -64,28 +64,82 @@ body.grabbing, body.grabbing #scene { cursor: grabbing; }
 .pop { animation: pop .24s cubic-bezier(.2, .9, .3, 1); }
 @keyframes pop { 35% { transform: scale(1.13); } 100% { transform: scale(1); } }
 
-/* Step prompt */
-.hint {
+/* Top: step progress, then the prompt */
+.top {
   position: fixed;
-  top: calc(16px + env(safe-area-inset-top, 0px));
+  top: calc(14px + env(safe-area-inset-top, 0px));
   left: 50%;
   transform: translateX(-50%);
+  width: max-content;
   max-width: calc(100% - 32px);
-  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+  z-index: 1;
+}
+.steps {
+  display: flex;
+  gap: 14px;
   margin: 0;
-  padding: 5px 14px;
+  padding: 0;
+  list-style: none;
+  font: 600 10.5px/1 var(--font-ui);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: #a3a3a0;
+}
+.steps li { display: flex; align-items: center; gap: 6px; transition: color .3s; }
+.steps li::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  box-sizing: border-box;
+  border: 1.25px solid currentColor;
+  transition: background-color .3s, transform .3s;
+}
+.steps li.done { color: #8a8a87; }
+.steps li.done::before { background: currentColor; }
+.steps li.current { color: var(--ink); }
+.steps li.current::before { background: currentColor; transform: scale(1.35); }
+
+.hint {
+  box-sizing: border-box;
+  max-width: 100%;
+  margin: 0;
+  padding: 6px 15px;
   border-radius: 999px;
-  background: rgba(246, 246, 245, .88);   /* stays legible when the freed head passes underneath */
+  background: rgba(252, 252, 251, .86);   /* stays legible when the freed head passes underneath */
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .05), 0 0 0 1px rgba(0, 0, 0, .035);
   text-align: center;
   font: 500 15px/1.4 var(--font-ui);
   letter-spacing: .01em;
   color: var(--muted);
-  pointer-events: none;
-  transition: opacity .16s ease-out;
-  z-index: 1;
+  transition: opacity .18s ease-out, transform .18s ease-out;
 }
-.hint.out { opacity: 0; }
+.hint.out { opacity: 0; transform: translateY(-3px); }
 .hint:empty { visibility: hidden; }
+.hint.final {
+  padding: 8px 20px;
+  font: 600 19px/1.35 var(--font-ui);
+  letter-spacing: 0;
+  color: var(--ink);
+}
+.sub {
+  margin: -2px 0 0;
+  font: 500 12.5px/1.4 var(--font-ui);
+  color: var(--muted);
+  opacity: 0;
+  transform: translateY(-3px);
+  transition: opacity .5s ease-out, transform .5s ease-out;
+}
+.sub.on { opacity: 1; transform: none; }
+
+/* Reset fades the whole scene out and back in */
+#scene, .top { transition: opacity .24s ease-out; }
+body.resetting #scene, body.resetting .top { opacity: 0; }
 
 /* Reset */
 .controls {
@@ -107,10 +161,11 @@ body.grabbing, body.grabbing #scene { cursor: grabbing; }
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 999px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .06);
   cursor: pointer;
-  transition: border-color .15s, transform .15s;
+  transition: border-color .15s, transform .15s, box-shadow .15s;
 }
-.reset:hover { border-color: var(--muted); }
+.reset:hover { border-color: var(--muted); box-shadow: 0 2px 6px rgba(0, 0, 0, .08); }
 .reset:active { transform: scale(.97); }
 .reset:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .reset svg { width: 15px; height: 15px; }
@@ -127,13 +182,19 @@ body.grabbing, body.grabbing #scene { cursor: grabbing; }
 @media (prefers-reduced-motion: reduce) {
   #headGrow, #studGrow { transition: none; }
   .pop { animation: none; }
-  .hint { transition: none; }
+  .hint, .sub, .steps li, .steps li::before, #scene, .top { transition: none; }
 }
   </style>
 </head>
 <body>
   <h1 class="sr-only">Seed to Flower</h1>
-  <p id="hint" class="hint" aria-live="polite">Drag the seed over the hole</p>
+  <div class="top">
+    <ol class="steps" id="steps" aria-label="Steps">
+      <li class="current">Drag</li><li>Release</li><li>Stretch</li><li>Pick</li>
+    </ol>
+    <p id="hint" class="hint" aria-live="polite">Drag the seed over the hole</p>
+    <p id="sub" class="sub">Press Reset to plant another seed.</p>
+  </div>
 
   <svg id="scene" data-stage="plant" viewBox="45 70 230 430" preserveAspectRatio="xMidYMid meet" tabindex="0"
        role="img" aria-label="A seed hanging above a patch of soil. Drag it over the hole and let go, or press Enter to drop it.">
@@ -194,6 +255,13 @@ body.grabbing, body.grabbing #scene { cursor: grabbing; }
       <filter id="lift" x="-40%" y="-40%" width="180%" height="190%">
         <feDropShadow dx="0" dy="7" stdDeviation="5" flood-color="#000" flood-opacity=".16"/>
       </filter>
+      <!-- soft contact shadows -->
+      <filter id="soft" x="-60%" y="-200%" width="220%" height="500%">
+        <feGaussianBlur stdDeviation="3"/>
+      </filter>
+      <filter id="softer" x="-60%" y="-300%" width="220%" height="700%">
+        <feGaussianBlur stdDeviation="6"/>
+      </filter>
       <!-- Everything above the hole's front lip stays visible; below it, only the opening shows. -->
       <clipPath id="aboveGround" clipPathUnits="userSpaceOnUse">
         <rect x="-2000" y="-2000" width="4320" height="2445"/>
@@ -202,6 +270,8 @@ body.grabbing, body.grabbing #scene { cursor: grabbing; }
     </defs>
 
     <!-- SOIL PATCH WITH HOLE (soil-hole.svg, hole centered at 160,445) -->
+    <!-- ground shadow under the soil patch -->
+    <ellipse cx="164" cy="481" rx="100" ry="9" fill="#000" opacity="0.13" filter="url(#soft)"/>
     <g transform="translate(40 350)">
       <path d="M22 98 C 20 78, 52 62, 86 60 C 110 54, 142 56, 166 62 C 200 66, 222 82, 218 100 C 216 118, 190 128, 156 130 C 126 134, 96 134, 70 130 C 40 126, 24 114, 22 98 Z"
             fill="url(#soilFill)" stroke="#555555" stroke-width="1.5"/>
@@ -225,6 +295,12 @@ body.grabbing, body.grabbing #scene { cursor: grabbing; }
     </g>
 
     <!-- SEED (seed.svg). Wrappers: clip (in-hole), shade (depth + fade-in), position + hover scale, squash/stretch -->
+    <!-- shadows cast onto the soil: the hanging seed and the flower head -->
+    <g pointer-events="none">
+      <ellipse id="headShadow" cx="0" cy="0" rx="40" ry="7" fill="#000" opacity="0" filter="url(#softer)"/>
+      <ellipse id="seedShadow" cx="0" cy="0" rx="14" ry="4" fill="#000" opacity="0" filter="url(#soft)"/>
+    </g>
+
     <g id="seedClip">
       <g id="seedShade">
         <g id="seed" transform="translate(160 350)">
@@ -320,6 +396,12 @@ body.grabbing, body.grabbing #scene { cursor: grabbing; }
 
     <!-- Flower head moves here once picked -->
     <g id="above"></g>
+
+    <!-- Petals shaken loose by the snap -->
+    <g id="flutter" pointer-events="none"></g>
+
+    <!-- Idle cue: a soft ring pulses around whatever the current step asks you to grab -->
+    <circle id="cue" r="20" fill="none" stroke="#7d7d7a" stroke-width="1.2" opacity="0" pointer-events="none"/>
 
     <!-- Snap burst -->
     <g id="fx" pointer-events="none">
@@ -417,12 +499,39 @@ body.grabbing, body.grabbing #scene { cursor: grabbing; }
     end: 'You picked the flower. You can drag it around.'
   };
   let hintText = hintEl.textContent, hintTimer = 0;
-  function setHint(text) {
+  function setHint(text, final = false) {
     if (text === hintText) return;
     hintText = text;
     clearTimeout(hintTimer);
     hintEl.classList.add('out');
-    hintTimer = setTimeout(() => { hintEl.textContent = text; hintEl.classList.remove('out'); }, reduced() ? 0 : 160);
+    hintTimer = setTimeout(() => {
+      hintEl.textContent = text;
+      hintEl.classList.toggle('final', final);
+      hintEl.classList.remove('out');
+    }, reduced() ? 0 : 180);
+  }
+
+  // Step progress: Drag · Release · Stretch · Pick
+  const stepEls = [...$('steps').children];
+  const subEl = $('sub');
+  let stepShown = -1;
+  function currentStep() {
+    if (stage === 'plant') {
+      if (sd.state === 'planting' || sd.state === 'settled') return 2;
+      return sd.state === 'dragging' && isAligned() ? 1 : 0;
+    }
+    if (stage === 'grow') return 2;
+    if (stage === 'bloom' || stage === 'pick') return 3;
+    return 4;                                 // end: all done
+  }
+  function updateSteps() {
+    const k = currentStep();
+    if (k === stepShown) return;
+    stepShown = k;
+    stepEls.forEach((li, i) => {
+      li.classList.toggle('done', i < k);
+      li.classList.toggle('current', i === k && (stage !== 'plant' || k < 2) && stage !== 'bloom');
+    });
   }
   function setStage(s) {
     stage = s;
@@ -610,8 +719,10 @@ body.grabbing, body.grabbing #scene { cursor: grabbing; }
     grabDX: 0, grabDY: 0, id: null,
     hovering: false, hoverScale: 1,
     squash: 0, squashV: 0,
-    bounceIdx: 0, failT: 0, opacity: 1
+    bounceIdx: 0, failT: 0, opacity: 1,
+    idleT: 0, swayAmp: 0                       // gentle hanging sway while it waits
   };
+  const seedShadow = $('seedShadow');
   let shootIn = 0;                            // seed shoot appears once the seed is planted
 
   function seedHit(pt) {
@@ -715,13 +826,34 @@ body.grabbing, body.grabbing #scene { cursor: grabbing; }
 
     sd.opacity += (1 - sd.opacity) * Math.min(1, dt * 8);
 
+    // hanging sway: swings from its top while idle, eases out as soon as it is touched
+    sd.idleT += dt;
+    const swayTo = soft && sd.state === 'idle' && !sd.hovering ? 1 : 0;
+    sd.swayAmp += (swayTo - sd.swayAmp) * Math.min(1, dt * (swayTo ? 1.5 : 10));
+    const rot = 2.4 * Math.sin(sd.idleT * 1.6) * sd.swayAmp;
+    const bob = 1.4 * Math.sin(sd.idleT * 2.2 + 0.6) * sd.swayAmp;
+
     const hc = SEED_H / 2;
     seedEl.setAttribute('transform',
-      `translate(${f2(sd.x)} ${f2(sd.y - hc)}) scale(${sd.hoverScale.toFixed(4)}) translate(0 ${f2(hc)})`);
+      `translate(${f2(sd.x)} ${f2(sd.y - hc + bob)}) rotate(${f2(rot)} 0 ${f2(-hc)}) scale(${sd.hoverScale.toFixed(4)}) translate(0 ${f2(hc)})`);
+    renderSeedShadow(bob);
     seedArt.setAttribute('transform',
       `scale(${(SEED_S * sx).toFixed(4)} ${(SEED_S * sy).toFixed(4)}) translate(-100 -164)`);
     seedShade.style.opacity = sd.opacity.toFixed(3);
     seedShade.style.filter = seedDepthFilter();
+  }
+  // Shadow on the soil: tighter and darker as the seed comes down; gone once it is in the hole
+  function renderSeedShadow(bob = 0) {
+    const ground = 446;
+    const h = ground - (sd.y + bob);
+    const overSoil = clamp(1 - (Math.abs(sd.x - HX) - 78) / 18);
+    const show = stage === 'plant' && h > 1 ? overSoil * sd.opacity : 0;
+    const near = 1 - clamp(h / 220);
+    seedShadow.setAttribute('cx', f2(sd.x + 3 + h * 0.03));
+    seedShadow.setAttribute('cy', f2(ground + 1));
+    seedShadow.setAttribute('rx', f2(11 + 10 * (1 - near)));
+    seedShadow.setAttribute('ry', f2(3 + 2.5 * (1 - near)));
+    seedShadow.setAttribute('opacity', (show * (0.08 + 0.22 * near) * clamp(h / 6)).toFixed(3));
   }
   // deeper in the hole reads darker
   function seedDepthFilter() {
@@ -882,6 +1014,8 @@ body.grabbing, body.grabbing #scene { cursor: grabbing; }
     t: 0, jx: 0, jy: 0
   };
   let joint = 0;                              // stem-over-joint overlay, socket and stud fade in for picking
+  let breezeAmp = 0, breezeT = 0;             // the bloom stirs in a light breeze while it waits to be picked
+  const headShadow = $('headShadow');
   let headC = { x: BX, y: BY };               // flower center on screen, for hit tests
   let headR = 60 * S;
   const KB_RATE = THRESH / 1.5;               // holding Space pulls the head this many units per second
@@ -958,7 +1092,75 @@ body.grabbing, body.grabbing #scene { cursor: grabbing; }
     try { if (navigator.vibrate) navigator.vibrate(12); } catch (_) {}
     setStage('end');
     setHint('');
-    later(700, () => setHint(HINT.end));
+    if (!reduced()) shedPetals(pk.lastTip);
+    later(700, () => setHint(HINT.end, true));
+    later(1700, () => subEl.classList.add('on'));
+  }
+
+  // A few small petals shake loose at the snap and drift down onto the soil
+  const flutterG = $('flutter');
+  let flutter = [];
+  function shedPetals(at) {
+    flutterG.innerHTML = '';
+    flutter = [];
+    for (let i = 0; i < 5; i++) {
+      const el = document.createElementNS(NS, 'g');
+      el.innerHTML = INNER;
+      flutterG.appendChild(el);
+      const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.2;
+      const sp = 30 + Math.random() * 45;
+      flutter.push({
+        el, x: at[0] + (Math.random() - 0.5) * 20, y: at[1] - 14 + (Math.random() - 0.5) * 16,
+        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+        rot: Math.random() * 360, vr: (Math.random() - 0.5) * 220,
+        ph: Math.random() * 6.28, sc: (0.32 + Math.random() * 0.14) * S,
+        land: 438 + Math.random() * 30, age: 0, rest: 0
+      });
+    }
+  }
+  function flutterFrame(dt) {
+    for (const f of flutter) {
+      f.age += dt;
+      if (f.y < f.land) {
+        f.vy = Math.min(f.vy + 140 * dt, 80);            // light, air-braked fall
+        f.vx *= Math.exp(-dt * 1.4);
+        f.x += (f.vx + 22 * Math.sin(f.age * 2.6 + f.ph)) * dt;
+        f.y += f.vy * dt;
+        f.rot += f.vr * dt;
+      } else {
+        f.rest += dt;                                    // settle on the soil, then fade
+      }
+      const o = clamp(f.age / 0.15) * (1 - clamp((f.rest - 1.6) / 1.2));
+      const flip = 0.55 + 0.45 * Math.cos(f.age * 3.1 + f.ph);
+      f.el.setAttribute('opacity', o.toFixed(3));
+      f.el.setAttribute('transform', `translate(${f2(f.x)} ${f2(f.y)}) rotate(${f2(f.rot)}) scale(${(f.sc * flip).toFixed(3)} ${f.sc.toFixed(3)}) translate(-100 -80)`);
+    }
+    if (flutter.length && flutter.every(f => f.rest > 2.8)) { flutterG.innerHTML = ''; flutter = []; }
+  }
+
+  // Idle cue: after a pause, a soft ring pulses around the thing to grab next
+  const cueEl = $('cue');
+  let lastActivity = performance.now();
+  const poke = () => { lastActivity = performance.now(); };
+  function cueFrame(now) {
+    let target = null;
+    if (stage === 'plant' && sd.state === 'idle' && !sd.hovering) target = { x: sd.x, y: sd.y - 21 * sd.hoverScale, r: 30 };
+    else if (stage === 'grow' && !drag && !hover && !done) { const t = targetPoint(); target = { x: t.x, y: t.y - (p > 0 ? 0 : 4), r: 22 }; }
+    else if (stage === 'pick' && pk.phase === 'rest' && !svg.classList.contains('hov')) target = { x: headC.x, y: headC.y, r: headR * 0.92 };
+    const waited = (now - lastActivity) / 1000;
+    if (!target || waited < 2.6) { cueEl.setAttribute('opacity', '0'); return; }
+    const fadeIn = clamp((waited - 2.6) / 0.6);
+    cueEl.setAttribute('cx', f2(target.x)); cueEl.setAttribute('cy', f2(target.y));
+    if (reduced()) {
+      cueEl.setAttribute('r', f2(target.r));
+      cueEl.setAttribute('opacity', (0.3 * fadeIn).toFixed(3));
+      return;
+    }
+    const e = ((waited - 2.6) % 1.9) / 1.9;
+    const k = 1 - Math.pow(1 - e, 2);
+    cueEl.setAttribute('r', f2(target.r * (0.92 + 0.3 * k)));
+    cueEl.setAttribute('stroke-width', f2(1.6 - 0.9 * k));
+    cueEl.setAttribute('opacity', (0.5 * (1 - e) * fadeIn).toFixed(3));
   }
 
   function pickFrame(dt) {
@@ -1022,7 +1224,8 @@ body.grabbing, body.grabbing #scene { cursor: grabbing; }
   function render(now) {
     const q = clamp(prog.x, 0, 1.08);
     const len = Math.max(0, stemLen(Math.min(q, 1)) + pull.x);
-    const lean = bend.x * clamp(len / 70) + sway.x;
+    const breeze = breezeAmp * (2.2 * Math.sin(breezeT * 1.25) + 0.8 * Math.sin(breezeT * 2.9 + 1.3));
+    const lean = bend.x * clamp(len / 70) + sway.x + breeze;
     const g = grab.x;
 
     // Grown shape: rooted cubic with the asset's gentle S-curve, leaning toward the pull
@@ -1089,6 +1292,16 @@ body.grabbing, body.grabbing #scene { cursor: grabbing; }
     const ar = ha * Math.PI / 180;
     headC = { x: hx + 12 * sc * Math.sin(ar), y: hy - 12 * sc * Math.cos(ar) };
     headR = 60 * sc;
+
+    // Soft shadow of the bloom on the soil (light from the upper left)
+    const bloomed = clamp((q - 0.8) / 0.2);
+    const lift = Math.max(0, 446 - headC.y);
+    const onSoil = clamp(1 - (Math.abs(headC.x + lift * 0.12 - HX) - 70) / 40);
+    headShadow.setAttribute('cx', f2(headC.x + 14 + lift * 0.12));
+    headShadow.setAttribute('cy', '449');
+    headShadow.setAttribute('rx', f2(34 + lift * 0.06));
+    headShadow.setAttribute('ry', f2(5 + lift * 0.01));
+    headShadow.setAttribute('opacity', (bloomed * onSoil * 0.16 * (1 - clamp((lift - 150) / 260))).toFixed(3));
 
     const budIn = backOut(clamp((q - 0.6) / 0.14));
     const budLoosen = clamp((q - 0.74) / 0.08);
@@ -1169,6 +1382,7 @@ body.grabbing, body.grabbing #scene { cursor: grabbing; }
   }
 
   svg.addEventListener('pointerdown', e => {
+    poke();
     const pt = toSvg(e);
     let took = false;
     if (stage === 'plant') took = seedDown(e, pt);
@@ -1184,9 +1398,11 @@ body.grabbing, body.grabbing #scene { cursor: grabbing; }
       else sd.hovering = sd.state === 'idle' && seedHit(pt);
     } else if (stage === 'grow') growMove(e, pt);
     else if (stage === 'pick' || stage === 'end') pickMove(e, pt);
+    if (sd.hovering || hover || svg.classList.contains('hov') || e.buttons) poke();
     updateCursor();
   });
   function onUp(e) {
+    poke();
     seedRelease(e);
     if (drag && e.pointerId === drag.id) growRelease();
     pickRelease(e.pointerId);
@@ -1204,6 +1420,7 @@ body.grabbing, body.grabbing #scene { cursor: grabbing; }
   // Keyboard: Enter/Space drops the seed, ArrowUp grows, holding Space/Enter pulls the flower
   const isPickKey = k => k === ' ' || k === 'Enter';
   svg.addEventListener('keydown', e => {
+    poke();
     if (stage === 'plant' && isPickKey(e.key)) {
       e.preventDefault();
       if (sd.state === 'idle' && !e.repeat) { Sound.init(); seedDrop(); }
@@ -1227,7 +1444,19 @@ body.grabbing, body.grabbing #scene { cursor: grabbing; }
   /* ------------------------------------------------------------------ */
   /* Reset: back to the hanging seed                                     */
   /* ------------------------------------------------------------------ */
+  let resetting = false;
   $('reset').addEventListener('click', () => {
+    if (resetting) return;
+    gen++;
+    if (reduced()) { resetAll(); return; }
+    resetting = true;
+    document.body.classList.add('resetting');
+    setTimeout(() => {
+      resetAll();
+      requestAnimationFrame(() => { document.body.classList.remove('resetting'); resetting = false; });
+    }, 240);
+  });
+  function resetAll() {
     gen++;
     // release whatever is held
     if (sd.id !== null) { try { svg.releasePointerCapture(sd.id); } catch (_) {} sd.id = null; }
@@ -1256,10 +1485,16 @@ body.grabbing, body.grabbing #scene { cursor: grabbing; }
     tickEls.forEach(ln => ln.setAttribute('opacity', '0'));
     joint = 0;
 
+    breezeAmp = 0;
+    flutterG.innerHTML = ''; flutter = [];
+    subEl.classList.remove('on');
+    sd.idleT = 0; sd.swayAmp = 0;
+    poke();
+
     setStage('plant');
     setHint(HINT.drag);
     updateCursor();
-  });
+  }
 
   /* ------------------------------------------------------------------ */
   /* Frame loop                                                          */
@@ -1286,8 +1521,15 @@ body.grabbing, body.grabbing #scene { cursor: grabbing; }
     pickFrame(Math.min(0.032, raw));
     const jt = stage === 'pick' || stage === 'end' ? 1 : 0;
     joint += (jt - joint) * Math.min(1, raw * 6);
+    breezeT += raw;
+    const bz = !reduced() && stage === 'pick' && pk.phase === 'rest' ? 1 : 0;
+    breezeAmp += (bz - breezeAmp) * Math.min(1, raw * (bz ? 0.8 : 8));
 
     render(now);
+    if (stage !== 'plant') renderSeedShadow();
+    flutterFrame(Math.min(0.05, raw));
+    cueFrame(now);
+    updateSteps();
     audioFrame();
 
     if (pk.phase === 'pull' && pk.t >= 1) snap();

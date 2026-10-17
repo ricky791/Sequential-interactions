@@ -561,7 +561,7 @@ body.done .foot .left { visibility: hidden; }
       st: null,                                            // stretch-to-grow drag
       pull: spring(0, 200, 19), bend: spring(0, 200, 19),  // rubber-band stretch and sideways lean of the stem
       tug: freshTug(), burst: null, fh: 1,                 // pull-to-pick
-      lastT: 0, tipBase: null,
+      lastT: 0, tipBase: null, guide: 0,
     };
     finalEl.classList.remove('show'); finalEl.setAttribute('aria-hidden', 'true');
     document.body.classList.remove('done');
@@ -1285,6 +1285,8 @@ body.done .foot .left { visibility: hidden; }
     tugPhysics(now, dt);
     const fhT = S.stage === 'mature' && (S.tug.id !== null || (S.mouse.on && flowerHit(S.mouse.x, S.mouse.y))) ? 1.07 : 1;
     S.fh += (fhT - S.fh) * Math.min(1, dt * 14);
+    const guideT = stageOpen() && !S.st && S.pts.length > 1 && S.stage === 'growing' ? 1 : 0;
+    S.guide += (guideT - S.guide) * Math.min(1, dt * (guideT ? 3 : 10));
     S.shake *= 0.93; S.kick *= 0.95;
     S.crack += ((S.stage === 'seed' || (S.stage === 'choosing' && S.step === 0) ? 0 : 1) - S.crack) * 0.05;
     S.roots.forEach(r => r.g += (1 - r.g) * 0.03);
@@ -1648,6 +1650,42 @@ body.done .foot .left { visibility: hidden; }
   }
 
   const snapAtSafe = () => S.flower ? snapAt() : 110;
+
+  // Stretch guide: a dotted track rises from the tip to how far this stage still has to be pulled,
+  // with chevrons flowing up along it. Shown whenever the plant is waiting to be stretched.
+  function drawStretchGuide(now) {
+    if (S.guide < 0.01) return;
+    const top = S.pts[S.pts.length - 1];
+    if (!top) return;
+    const A = S.auto;
+    const left = A ? Math.max(0.6, A.n - A.prog) : (S.step >= STEPS.length ? 3 : 4);
+    const len = clamp(left * stepLen(), 40, Math.max(60, top.y - 70));
+    const x = top.x, y0 = top.y - 16, y1 = y0 - len;
+    const a = S.guide;
+    ctx.save();
+    ctx.lineCap = 'round';
+    // track
+    ctx.setLineDash([1.5, 6]);
+    ctx.lineDashOffset = reduce ? 0 : now * 0.02;
+    ctx.strokeStyle = `rgba(232,227,212,${0.28 * a})`; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y1); ctx.stroke();
+    ctx.setLineDash([]);
+    // where this stage ends
+    ctx.strokeStyle = `rgba(232,227,212,${0.45 * a})`; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(x - 7, y1); ctx.lineTo(x + 7, y1); ctx.stroke();
+    // chevrons travel up the track and fade out near the end
+    const n = 3, cyc = 1.6;
+    for (let i = 0; i < n; i++) {
+      const u = reduce ? (i + 0.5) / n : ((now / 1000 / cyc) + i / n) % 1;
+      const y = y0 - u * (len - 10);
+      const fade = Math.sin(Math.PI * u);
+      const w = 7 + 2 * fade;
+      ctx.strokeStyle = `rgba(232,227,212,${(reduce ? 0.6 : 0.85 * fade) * a})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(x - w, y + w * 0.6); ctx.lineTo(x, y); ctx.lineTo(x + w, y + w * 0.6); ctx.stroke();
+    }
+    ctx.restore();
+  }
   // ring and ticks where the stem snapped
   function drawBurst(now) {
     const b = S.burst;
@@ -1870,6 +1908,7 @@ body.done .foot .left { visibility: hidden; }
       }
       drawBee(pts, now);
       drawParts(now);
+      drawStretchGuide(now);
     }
     drawBurst(now);
     if (TUT) drawTutTarget(pts, now);

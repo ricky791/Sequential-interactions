@@ -18,3 +18,19 @@ Keyboard: Enter drops the seed, the Up arrow grows the flower, holding Space pul
 The site is a single self-contained file, [`docs/index.html`](docs/index.html) (HTML, CSS and JavaScript inline, no dependencies or build step),
 so it is both the editable source and what GitHub Pages serves, and it also works when opened on its own.
 To publish it, set **Settings → Pages → Build and deployment** to *Deploy from a branch*, branch `main`, folder `/docs`.
+
+## GROW game with the Seed to Flower interactions
+
+[`docs/grow/index.html`](docs/grow/index.html), live at https://ricky791.github.io/Sequential-interactions/grow/
+
+The GROW game (soil, water, light, companion and climate choices, rhythm, archive, tutorial) with its
+sowing, growing and picking gestures replaced by the Seed to Flower interactions:
+
+- **Sow:** drag the seed right over the hole and let go; it drops in, bounces and settles. A miss springs back.
+- **Grow:** grab the stem tip and stretch it upward, one stage between each choice. Growth only moves forward,
+  pulling past the tip stretches it like a rubber band and pulling sideways leans it. A slow pull is patient;
+  a yank rushes it and twists the stem (this feeds the rhythm, as fast clicks used to).
+- **Pick:** pull the flower against rising resistance until the stem snaps; it then floats to the centre as before.
+- Synthesized sound for each of these. Keyboard: Space drops the seed, Up arrow grows a step, hold Space to pick.
+
+Outside claude.ai the archive is saved in this browser only.

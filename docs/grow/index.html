@@ -1,0 +1,2333 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>GROW</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Instrument+Sans:wght@400;500&family=JetBrains+Mono:wght@400&display=swap">
+<style>
+/* Layout: one full-bleed night-soil stage; title top-left, choice cards rise from the bottom, system feedback pinned bottom. Deliberately single dark theme. */
+:root {
+  --night: #10130f;
+  --soil: #2b251d;
+  --paper: #e8e3d4;
+  --muted: #8b917c;
+  --panel: #191d16;
+  --line: #343a2d;
+  --leaf: #6f9a52;
+  --warm: #e38a5c;
+  --cool: #93b4c6;
+  --f-display: "Syne", "Arial Black", system-ui, sans-serif;
+  --f-body: "Instrument Sans", system-ui, -apple-system, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { background: var(--night); color: var(--paper); font-family: var(--f-body); overflow: hidden; }
+#stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; outline: none; }
+#stage:focus-visible { box-shadow: inset 0 0 0 2px var(--cool); }
+
+.head {
+  position: fixed; top: calc(env(safe-area-inset-top, 0px) + 28px); left: 0; right: 0;
+  padding-inline: max(16px, 4vw); pointer-events: none;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.head h1 { margin: 0; font-family: var(--f-display); font-weight: 800; font-size: clamp(2.2rem, 6vw, 3.6rem); letter-spacing: 0.22em; line-height: 1; }
+.head p { margin: 0; color: var(--muted); font-size: 0.95rem; letter-spacing: 0.02em; }
+
+.foot {
+  position: fixed; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 22px);
+  padding-inline: max(16px, 4vw);
+  display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 14px 24px;
+  pointer-events: none;
+}
+.left { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.status { font-family: var(--f-mono); font-size: 0.78rem; letter-spacing: 0.04em; color: var(--muted); min-height: 1.2em; }
+.status b { color: var(--paper); font-weight: 400; }
+.path { font-family: var(--f-mono); font-size: 0.7rem; letter-spacing: 0.06em; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; }
+.path i { font-style: normal; color: var(--paper); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; }
+.path s { text-decoration: none; opacity: .5; }
+.rhythm { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+.rhythm span { font-family: var(--f-mono); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.14em; color: var(--muted); }
+.rhythm canvas { width: 220px; height: 26px; max-width: 100%; display: block; }
+
+/* Choice step */
+.choice {
+  position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 84px);
+  transform: translate(-50%, 12px); opacity: 0;
+  width: min(560px, calc(100% - 32px));
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  border: 1px solid var(--line); border-radius: 14px;
+  padding: 16px; display: flex; flex-direction: column; gap: 12px;
+  transition: opacity .45s ease, transform .45s ease;
+  backdrop-filter: blur(6px);
+}
+.choice.show { opacity: 1; transform: translate(-50%, 0); }
+.choice .meta { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.choice .step { font-family: var(--f-mono); font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.choice .dots { display: flex; gap: 5px; }
+.choice .dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--line); }
+.choice .dots span.on { background: var(--paper); }
+.choice h3 { margin: 0; font-weight: 500; font-size: 1.05rem; text-wrap: balance; }
+.opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.opt {
+  font: inherit; color: var(--paper); text-align: left; cursor: pointer;
+  background: transparent; border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px 10px 11px; display: flex; flex-direction: column; gap: 4px; min-width: 0;
+  transition: border-color .2s, background .2s, transform .2s;
+}
+.opt:hover { border-color: var(--muted); background: color-mix(in srgb, var(--paper) 4%, transparent); transform: translateY(-2px); }
+.opt:focus-visible { outline: 2px solid var(--cool); outline-offset: 2px; }
+.opt .sw { width: 18px; height: 18px; border-radius: 50%; margin-bottom: 4px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.12); }
+.opt b { font-weight: 700; font-size: 0.98rem; }
+.opt b em { font-style: normal; font-weight: 400; color: var(--muted); font-size: 0.76rem; margin-left: 4px; font-family: var(--f-mono); }
+.opt small { color: var(--muted); font-size: 0.78rem; line-height: 1.35; }
+@media (max-width: 480px) {
+  .opts { grid-template-columns: 1fr; }
+  .opt { flex-direction: row; align-items: center; gap: 10px; }
+  .opt .sw { margin: 0; flex: none; }
+  .opt small { margin-left: auto; text-align: right; }
+  .rhythm { align-items: flex-start; }
+}
+
+.final {
+  position: fixed; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 78px);
+  padding-inline: 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center;
+  pointer-events: none; opacity: 0; transform: translateY(6px);
+  transition: opacity 1.2s ease, transform 1.2s ease;
+}
+.final.show { opacity: 1; transform: none; }
+.final h2 { margin: 0; font-family: var(--f-display); font-weight: 700; font-size: clamp(1.15rem, 3vw, 1.5rem); letter-spacing: 0.04em; text-wrap: balance; }
+.final .kind { font-size: 1.05rem; font-weight: 500; }
+.final .kind span { color: var(--muted); font-family: var(--f-mono); font-size: 0.75rem; margin-left: 6px; }
+.final p { margin: 0; color: var(--muted); max-width: 48ch; line-height: 1.55; text-wrap: balance; }
+.final button {
+  pointer-events: auto; margin-top: 6px; font: 500 0.82rem var(--f-body); letter-spacing: 0.06em; color: var(--paper);
+  background: transparent; border: 1px solid color-mix(in srgb, var(--paper) 35%, transparent); border-radius: 999px; padding: 8px 18px; cursor: pointer;
+}
+.final button:hover { border-color: var(--paper); }
+.final button:focus-visible { outline: 2px solid var(--cool); outline-offset: 3px; }
+.final[aria-hidden="true"] button { pointer-events: none; }
+.final-actions { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.final button.primary { background: var(--paper); color: var(--night); border-color: var(--paper); }
+.final button.primary:hover { background: transparent; color: var(--paper); }
+.final button.primary:disabled { background: transparent; color: var(--muted); border-color: var(--line); cursor: default; }
+
+/* Tutorial */
+.tut-start {
+  pointer-events: auto; align-self: flex-start; margin-top: 8px;
+  font: 500 0.82rem var(--f-body); color: var(--night); background: var(--paper);
+  border: 1px solid var(--paper); border-radius: 999px; padding: 7px 14px; cursor: pointer;
+}
+.tut-start:hover { background: transparent; color: var(--paper); }
+.tut-start:focus-visible, .tut-exit:focus-visible, .tut-next:focus-visible, .tut-ghost:focus-visible { outline: 2px solid var(--cool); outline-offset: 3px; }
+.tut {
+  position: fixed; z-index: 5;
+  left: max(16px, 4vw); top: calc(env(safe-area-inset-top, 0px) + 140px);
+  width: 330px; max-height: calc(100% - 200px); overflow-y: auto;
+  background: color-mix(in srgb, var(--panel) 94%, transparent);
+  border: 1px solid var(--line); border-radius: 14px;
+  padding: 16px; display: flex; flex-direction: column; gap: 12px;
+  backdrop-filter: blur(6px);
+}
+.tut-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.tut-step { font: 0.7rem var(--f-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.tut-exit { font: 0.75rem var(--f-body); color: var(--muted); background: none; border: 0; cursor: pointer; padding: 2px 0; text-decoration: underline; text-underline-offset: 3px; }
+.tut-exit:hover { color: var(--paper); }
+.tut-bar { height: 3px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.tut-bar b { display: block; height: 100%; background: var(--paper); transition: width .4s ease; }
+.tut h3 { margin: 0; font-family: var(--f-display); font-weight: 700; font-size: 1.2rem; letter-spacing: 0.03em; }
+.tut .lbl { font: 0.66rem var(--f-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.tut-do { display: flex; flex-direction: column; gap: 6px; }
+.tut-do p#tutDo { margin: 0; font-size: 1rem; line-height: 1.45; font-weight: 500; }
+.tut-count { display: flex; gap: 6px; }
+.tut-count span { width: 12px; height: 12px; border-radius: 50%; border: 1px solid var(--muted); transition: background .2s, border-color .2s; }
+.tut-count span.on { background: var(--cool); border-color: var(--cool); }
+.tut-count span.fast.on { background: var(--warm); border-color: var(--warm); }
+.tut-meter { height: 6px; background: var(--line); border-radius: 6px; overflow: hidden; }
+.tut-meter b { display: block; height: 100%; width: 0; background: var(--cool); }
+.tut-live { margin: 0; min-height: 1.3em; font: 0.78rem var(--f-mono); color: var(--muted); line-height: 1.45; }
+.tut-live b { color: var(--paper); font-weight: 400; }
+.tut-fx { display: flex; flex-direction: column; gap: 6px; }
+.fx-row { border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; }
+.fx-row p { margin: 0; line-height: 1.45; font-size: 0.9rem; }
+.fx-row.cause { border: 1px solid var(--line); }
+.fx-row.effect { background: color-mix(in srgb, var(--leaf) 16%, transparent); border: 1px solid color-mix(in srgb, var(--leaf) 45%, transparent); }
+.fx-row.effect .lbl { color: var(--leaf); }
+.fx-arrow { height: 14px; display: flex; justify-content: center; }
+.fx-arrow::before { content: ""; width: 1px; height: 100%; background: var(--muted); }
+.tut-next, .tut-ghost { font: 500 0.85rem var(--f-body); border-radius: 999px; padding: 9px 18px; cursor: pointer; align-self: flex-start; }
+.tut-next { margin-top: 6px; color: var(--night); background: var(--paper); border: 1px solid var(--paper); }
+.tut-next:hover { background: transparent; color: var(--paper); }
+.tut-ghost { color: var(--paper); background: transparent; border: 1px solid var(--line); }
+.tut-ghost:hover { border-color: var(--muted); }
+.tut-fxline { margin: 0; padding: 8px 10px; border-radius: 8px; font-size: 0.85rem; line-height: 1.45;
+  background: color-mix(in srgb, var(--leaf) 16%, transparent); border: 1px solid color-mix(in srgb, var(--leaf) 40%, transparent); }
+.tut-fxline::before { content: "What happened  "; font: 0.64rem var(--f-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--leaf); display: block; margin-bottom: 2px; }
+.tut-hint { margin: 0; color: var(--muted); font-size: 0.85rem; line-height: 1.45; }
+.tut-end { display: flex; flex-direction: column; gap: 10px; }
+.tut-end p { margin: 0; color: var(--muted); line-height: 1.5; font-size: 0.9rem; }
+.tut-end-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.tut-end-actions .tut-next { margin-top: 0; }
+body.tut-on .status, body.tut-on #again { display: none; }
+@media (max-width: 859px) {
+  .tut { left: 16px; right: 16px; width: auto; top: calc(env(safe-area-inset-top, 0px) + 96px); max-height: 38%; padding: 12px 14px; gap: 8px; }
+  .tut h3 { font-size: 1.05rem; }
+  body.tut-on .head p { display: none; }
+}
+
+/* Archive */
+.archive-btn {
+  position: fixed; top: calc(env(safe-area-inset-top, 0px) + 30px); right: max(16px, 4vw);
+  font: 500 0.8rem var(--f-mono); letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--paper); background: transparent; border: 1px solid var(--line); border-radius: 999px;
+  padding: 7px 14px; cursor: pointer; display: flex; gap: 8px; align-items: center;
+  transition: border-color .2s, transform .3s;
+}
+.archive-btn span { color: var(--muted); font-variant-numeric: tabular-nums; }
+.archive-btn:hover { border-color: var(--muted); }
+.archive-btn:focus-visible, .close:focus-visible { outline: 2px solid var(--cool); outline-offset: 3px; }
+.archive-btn.bump { transform: scale(1.12); border-color: var(--paper); }
+.archive {
+  position: fixed; inset: 0; z-index: 10;
+  background: color-mix(in srgb, var(--night) 94%, transparent);
+  backdrop-filter: blur(8px);
+  overflow-y: auto; overscroll-behavior: contain;
+  padding-inline: max(16px, 4vw);
+  padding-block: calc(env(safe-area-inset-top, 0px) + 28px) calc(env(safe-area-inset-bottom, 0px) + 40px);
+}
+.archive-inner { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+.archive-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.archive-titles { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.archive h2 { margin: 0; font-family: var(--f-display); font-weight: 800; font-size: clamp(1.6rem, 4vw, 2.4rem); letter-spacing: 0.16em; text-transform: uppercase; }
+.archive-titles p { margin: 0; color: var(--muted); max-width: 52ch; line-height: 1.5; }
+.close { font: 500 0.82rem var(--f-body); color: var(--paper); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 8px 16px; cursor: pointer; flex: none; }
+.close:hover { border-color: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font: 0.7rem var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.legend span { display: flex; align-items: center; gap: 6px; }
+.legend i { width: 9px; height: 9px; border-radius: 50%; background: color-mix(in srgb, #8a6b48 calc(var(--d) * 100%), var(--leaf)); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+.card {
+  border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+  background: var(--panel); display: flex; flex-direction: column; min-width: 0;
+}
+.card canvas { width: 100%; aspect-ratio: 1; max-width: 100%; display: block; background: radial-gradient(circle at 50% 42%, #1d2219 0%, #141711 70%); }
+.card .body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.card h3 { margin: 0; font-size: 1rem; font-weight: 500; }
+.card .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.chip { font: 0.68rem var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--paper); white-space: nowrap; }
+.chip::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; vertical-align: 0; background: color-mix(in srgb, #8a6b48 calc(var(--d) * 100%), var(--leaf)); }
+.decay { height: 3px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.decay b { display: block; height: 100%; background: color-mix(in srgb, #8a6b48 calc(var(--d) * 100%), var(--leaf)); width: calc(var(--d) * 100%); }
+.card time, .card .age { font: 0.72rem var(--f-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.card .path { font: 0.72rem var(--f-mono); color: var(--paper); opacity: .8; line-height: 1.5; overflow-wrap: anywhere; }
+.card p { margin: 0; color: var(--muted); font-size: 0.82rem; line-height: 1.45; }
+.empty { grid-column: 1 / -1; border: 1px dashed var(--line); border-radius: 12px; padding: 40px 20px; text-align: center; color: var(--muted); line-height: 1.6; }
+.empty b { color: var(--paper); font-weight: 500; display: block; margin-bottom: 4px; }
+.archive-note { margin: 0; color: var(--muted); font: 0.72rem var(--f-mono); letter-spacing: 0.04em; }
+@media (max-width: 480px) { .archive-btn { top: calc(env(safe-area-inset-top, 0px) + 34px); } }
+body.done .foot .left { visibility: hidden; }
+@media (prefers-reduced-motion: reduce) { .choice, .final, .opt { transition: none; } }
+</style>
+
+<canvas id="stage" tabindex="0" aria-label="A seed. Drag it into the soil, or press Space to drop it."></canvas>
+
+<header class="head">
+  <h1>GROW</h1>
+  <p>Take care of it.</p>
+  <button class="tut-start" id="startTut" type="button">New here? Follow the tutorial</button>
+</header>
+
+<aside class="tut" id="tut" hidden aria-live="polite" aria-labelledby="tutTitle">
+  <div class="tut-top">
+    <span class="tut-step" id="tutStep"></span>
+    <button class="tut-exit" id="tutExit" type="button">Exit tutorial</button>
+  </div>
+  <div class="tut-bar" aria-hidden="true"><b id="tutBar"></b></div>
+  <p class="tut-fxline" id="tutFxLine" hidden></p>
+  <h3 id="tutTitle"></h3>
+  <p class="tut-hint" id="tutHint"></p>
+  <div class="tut-end" id="tutEnd" hidden>
+    <div class="tut-end-actions">
+      <button id="tutFree" class="tut-next" type="button">Grow freely</button>
+      <button id="tutArchive" class="tut-ghost" type="button">Open archive</button>
+    </div>
+  </div>
+</aside>
+
+<button class="archive-btn" id="openArchive" type="button" aria-haspopup="dialog">Archive <span id="archiveCount">0</span></button>
+
+<section class="archive" id="archive" role="dialog" aria-modal="true" aria-labelledby="archiveTitle" hidden>
+  <div class="archive-inner">
+    <div class="archive-head">
+      <div class="archive-titles">
+        <h2 id="archiveTitle">Archive</h2>
+        <p id="archiveSub">Flowers you picked. They keep decaying while they wait here.</p>
+      </div>
+      <button class="close" id="closeArchive" type="button" aria-label="Close archive">Close</button>
+    </div>
+    <div class="legend" aria-hidden="true">
+      <span><i style="--d:0"></i>Fresh</span><span><i style="--d:.35"></i>Wilting</span><span><i style="--d:.65"></i>Withered</span><span><i style="--d:.95"></i>Decayed</span>
+    </div>
+    <div class="grid" id="archiveGrid"></div>
+    <p class="archive-note" id="archiveNote"></p>
+  </div>
+</section>
+
+<section class="choice" id="choice" hidden aria-live="polite">
+  <div class="meta"><span class="step" id="stepLabel"></span><div class="dots" id="dots"></div></div>
+  <h3 id="question"></h3>
+  <div class="opts" id="opts"></div>
+</section>
+
+<div class="final" id="final" aria-hidden="true" aria-live="polite">
+  <h2>Your plant grew this way.</h2>
+  <div class="kind" id="kind"></div>
+  <p id="finalNote"></p>
+  <div class="final-actions">
+    <button id="keep" type="button" class="primary">Add to archive</button>
+    <button id="again" type="button">Plant again</button>
+  </div>
+</div>
+
+<footer class="foot">
+  <div class="left">
+    <div class="status" id="status" aria-live="polite"></div>
+    <div class="path" id="path"></div>
+  </div>
+  <div class="rhythm">
+    <span>Your rhythm</span>
+    <canvas id="rhythm" aria-hidden="true"></canvas>
+  </div>
+</footer>
+
+<script>
+(() => {
+  const cv = document.getElementById('stage');
+  const ctx = cv.getContext('2d');
+  const rc = document.getElementById('rhythm');
+  const rctx = rc.getContext('2d');
+  const $ = id => document.getElementById(id);
+  const statusEl = $('status'), pathEl = $('path'), finalEl = $('final'), choiceEl = $('choice');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const RM = reduce ? 0.3 : 1;
+
+  const css = getComputedStyle(document.documentElement);
+  const C = {};
+  ['soil', 'paper', 'muted', 'warm', 'cool'].forEach(n => C[n] = css.getPropertyValue('--' + n).trim());
+
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const ease = g => 1 - Math.pow(1 - clamp(g, 0, 1), 3);
+  const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
+  const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+
+  const FAST = 320, SLOW = 800, FLOWER_AT = 18, REST_AFTER = 2500, BUD_IDLE = 10000, STYLE_IDLE = 13000;
+
+  // ---------- Feel: springs and rubber banding (from the Seed to Flower prototype) ----------
+  function spring(x, k, c) { return { x, v: 0, t: x, k, c }; }
+  function stepSpring(sp, dt) { const a = sp.k * (sp.t - sp.x) - sp.c * sp.v; sp.v += a * dt; sp.x += sp.v * dt; }
+  function tune(sp, kk, c) { sp.k = kk; sp.c = reduce ? Math.max(c, 2 * Math.sqrt(kk)) : c; }
+  const rubber = (d, lim) => lim * (1 - Math.exp(-Math.max(0, d) / lim));
+  function freshTug() {
+    return { phase: 'rest', D: [0, 0], Dv: [0, 0], sK: 280, sC: 15, id: null, kb: false,
+             grabStart: [0, 0], Gbase: [0, 0], lastP: [0, 0], t: 0, jx: 0, jy: 0 };
+  }
+
+  // ---------- Sound (synthesized with Web Audio; starts on the first gesture) ----------
+  const Sound = (() => {
+    let ctx = null, master = null, white = null, brown = null, bed = null;
+    let grainAcc = 0, lastT = 0;
+    const rnd = (a, b) => a + Math.random() * (b - a);
+
+    function makeNoise(sec, kind) {
+      const b = ctx.createBuffer(1, Math.floor(ctx.sampleRate * sec), ctx.sampleRate);
+      const d = b.getChannelData(0);
+      let last = 0;
+      for (let i = 0; i < d.length; i++) {
+        const w = Math.random() * 2 - 1;
+        if (kind === 'brown') { last = (last + 0.02 * w) / 1.02; d[i] = last * 3.5; }
+        else d[i] = w;
+      }
+      return b;
+    }
+    function out(pan) {
+      if (ctx.createStereoPanner && pan) {
+        const p = ctx.createStereoPanner(); p.pan.value = clamp(pan, -1, 1); p.connect(master); return p;
+      }
+      return master;
+    }
+    // One short filtered noise burst: the building block of every texture
+    function burst({ when = 0, dur = 0.02, freq = 2000, q = 1, peak = 0.1, attack = 0.002, pan = 0, type = 'bandpass', buf = white, sweepTo = 0 }) {
+      const t = ctx.currentTime + when;
+      const s = ctx.createBufferSource(); s.buffer = buf;
+      const fl = ctx.createBiquadFilter(); fl.type = type; fl.Q.value = q;
+      fl.frequency.setValueAtTime(freq, t);
+      if (sweepTo) fl.frequency.exponentialRampToValueAtTime(sweepTo, t + attack + dur);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(peak, t + attack);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + attack + dur);
+      s.connect(fl); fl.connect(g); g.connect(out(pan));
+      s.start(t, rnd(0, buf.duration - attack - dur - 0.1), attack + dur + 0.05);
+    }
+
+    function init() {
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
+        ctx = new AC();
+        master = ctx.createGain();
+        const comp = ctx.createDynamicsCompressor();
+        master.connect(comp); comp.connect(ctx.destination);
+        white = makeNoise(3, 'white');
+        brown = makeNoise(4, 'brown');
+
+        // Continuous bed while growing: a soft fibrous swish
+        const s = ctx.createBufferSource(); s.buffer = white; s.loop = true;
+        const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 900; bp.Q.value = 0.7;
+        const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2600;
+        const g = ctx.createGain(); g.gain.value = 0;
+        s.connect(bp); bp.connect(lp); lp.connect(g); g.connect(master);
+        s.start();
+        bed = { bp, g };
+        lastT = ctx.currentTime;
+      } catch (_) { ctx = null; }
+    }
+
+    // Seed landing in soil: a dull thud plus a little grit, scaled by impact speed (new for this sequence)
+    function thud(strength) {
+      if (!ctx) return;
+      const s = clamp(strength, 0, 1);
+      burst({ dur: 0.06 + 0.05 * s, freq: 170 + 110 * s, type: 'lowpass', q: 0.7, peak: 0.04 + 0.3 * s, attack: 0.003, buf: brown });
+      const n = 2 + Math.round(4 * s);
+      for (let i = 0; i < n; i++) {
+        burst({ when: rnd(0, 0.05), dur: rnd(0.004, 0.012), freq: rnd(2200, 5000), q: rnd(1.5, 3),
+                peak: 0.01 + rnd(0.015, 0.05) * s, pan: rnd(-0.25, 0.25) });
+      }
+    }
+    // Stem stretching: soft swish plus tiny fiber creaks whose density follows drag speed and tension
+    function stretch(q, tension, speed) {
+      if (!bed) return;
+      const now = ctx.currentTime;
+      const dt = Math.min(0.1, now - lastT); lastT = now;
+      bed.bp.frequency.setTargetAtTime(500 + 700 * q + tension * 12, now, 0.08);
+      bed.g.gain.setTargetAtTime(0.045 * speed, now, speed > 0.02 ? 0.05 : 0.15);
+      grainAcc += speed * (22 + tension * 3) * dt;
+      while (grainAcc >= 1) {
+        grainAcc -= 1;
+        burst({
+          when: rnd(0, 0.03), dur: rnd(0.004, 0.014),
+          freq: rnd(1100, 2600) + tension * 40, q: rnd(1.5, 4),
+          peak: rnd(0.03, 0.11) * (0.5 + 0.5 * speed), pan: rnd(-0.2, 0.2)
+        });
+      }
+    }
+    // Leaf unfolding: a cluster of dry leaf rustles
+    function rustle(pan = 0, when = 0, scale = 1) {
+      if (!ctx) return;
+      const n = 7 + Math.floor(Math.random() * 4);
+      for (let i = 0; i < n; i++) {
+        burst({
+          when: when + rnd(0, 0.32), dur: rnd(0.025, 0.08), freq: rnd(2500, 6000),
+          q: rnd(0.7, 1.6), peak: rnd(0.04, 0.1) * scale, attack: 0.004, pan: pan + rnd(-0.15, 0.15)
+        });
+      }
+      burst({ when, dur: 0.28, freq: 3200, q: 0.5, peak: 0.035 * scale, attack: 0.06, pan });
+    }
+    // Bud appearing: a soft muffled split, like a pod giving way
+    function pop() {
+      if (!ctx) return;
+      burst({ dur: 0.09, freq: 320, type: 'lowpass', q: 0.8, peak: 0.4, attack: 0.003, buf: brown });
+      burst({ when: 0.004, dur: 0.007, freq: 3200, type: 'highpass', q: 0.7, peak: 0.1 });
+      burst({ when: 0.02, dur: 0.012, freq: 1800, q: 2, peak: 0.05 });
+    }
+    // Each petal unfurling: a silky, rising brush
+    function petal(i) {
+      if (!ctx) return;
+      const pan = (i - 2.5) * 0.12;
+      burst({ dur: 0.32, freq: 1800, sweepTo: 4800, q: 0.9, peak: 0.03, attack: 0.09, pan });
+      burst({ when: rnd(0.04, 0.15), dur: 0.01, freq: rnd(3000, 5000), q: 2, peak: 0.03, pan });
+    }
+    // Full bloom: a gentle breeze swells through and the leaves stir
+    function bloom() {
+      if (!ctx) return;
+      const t = ctx.currentTime;
+      const s = ctx.createBufferSource(); s.buffer = brown; s.loop = true;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = 0.6;
+      lp.frequency.setValueAtTime(260, t);
+      lp.frequency.linearRampToValueAtTime(900, t + 1.1);
+      lp.frequency.linearRampToValueAtTime(320, t + 3);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.2, t + 1.0);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 3.2);
+      s.connect(lp); lp.connect(g); g.connect(master);
+      s.start(t); s.stop(t + 3.3);
+      rustle(-0.35, 0.5, 0.8);
+      rustle(0.35, 0.95, 0.7);
+      rustle(0, 1.5, 0.45);
+    }
+    // Stem snapping: one hollow pop, like a cork pulled out (Pick a Flower)
+    function snap() {
+      if (!ctx) return;
+      try {
+        const t = ctx.currentTime;
+        const o = ctx.createOscillator();
+        o.type = 'sine';
+        o.frequency.setValueAtTime(240, t);
+        o.frequency.exponentialRampToValueAtTime(680, t + 0.03);
+        o.frequency.exponentialRampToValueAtTime(520, t + 0.09);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.6, t + 0.006);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.11);
+        o.connect(g).connect(ctx.destination);
+        o.start(t); o.stop(t + 0.13);
+      } catch (_) {}
+    }
+    return { init, thud, stretch, rustle, pop, petal, bloom, snap };
+  })();
+
+  // ---------- The five choice steps ----------
+  // at: growth-click count when the step appears ('seed' = right after the seed is clicked)
+  // t: trait points used for the final plant type (lush / hardy / lunar / wild)
+  const STEPS = [
+    { key: 'soil', at: 'seed', en: 'Soil', q: 'What soil will you plant it in?', opts: [
+      { id: 'clay', en: 'Clay', hint: 'Deep roots, thick stem', sw: '#7a5a3c', t: { hardy: 2 } },
+      { id: 'sand', en: 'Sand', hint: 'Thin stem, narrow pointed leaves', sw: '#c9a86a', t: { hardy: 1, wild: 1 } },
+      { id: 'humus', en: 'Humus', hint: 'More and bigger leaves', sw: '#3d2f22', t: { lush: 2 } } ] },
+    { key: 'water', at: 2, en: 'Water', q: 'It needs water. How will you give it?', opts: [
+      { id: 'mist', en: 'Mist', hint: 'Small leaves that fold upward', sw: '#b8c9cf', t: { hardy: 1, lunar: 1 } },
+      { id: 'steady', en: 'Steady', hint: 'Even, upright growth', sw: '#5f8fa8', t: { lush: 1 } },
+      { id: 'flood', en: 'Downpour', hint: 'Drooping leaves with water drops', sw: '#2f5878', t: { wild: 2 } } ] },
+    { key: 'light', at: 6, en: 'Light', q: 'Which light should it turn toward?', opts: [
+      { id: 'sun', en: 'Sun', hint: 'Bright and standing tall', sw: '#f0c26a', t: { lush: 1, hardy: 1 } },
+      { id: 'moon', en: 'Moon', hint: 'Paler colors with a soft glow', sw: '#c9d3e6', t: { lunar: 2 } },
+      { id: 'shade', en: 'Shade', hint: 'Leans sideways looking for light', sw: '#3f4a3a', t: { wild: 1, lunar: 1 } } ] },
+    { key: 'friend', at: 10, en: 'Companion', q: 'Who will keep it company?', opts: [
+      { id: 'bee', en: 'Bee', hint: 'More petals, more pollen', sw: '#e8b63c', t: { lush: 2 } },
+      { id: 'vine', en: 'Vine', hint: 'Tendrils wrap around the stem', sw: '#7fa44a', t: { wild: 2 } },
+      { id: 'fungus', en: 'Fungus', hint: 'Mushrooms at the base, purple flower center', sw: '#9a6fa8', t: { lunar: 1, hardy: 1 } } ] },
+    { key: 'climate', at: 14, en: 'Climate', q: 'Before it blooms, the weather changes.', opts: [
+      { id: 'wind', en: 'Wind', hint: 'Bent stem, petals blow away', sw: '#a7b0a0', t: { wild: 2 } },
+      { id: 'frost', en: 'Frost', hint: 'Ice crystals and cooler colors', sw: '#a9d6ee', t: { lunar: 1, hardy: 1 } },
+      { id: 'warmth', en: 'Warmth', hint: 'A bigger, brighter flower', sw: '#ea8a5a', t: { lush: 2 } } ] },
+  ];
+
+  let TUT = null; // tutorial state; null = free mode
+  const TUT_WIDE = 860;
+  let W, H, dpr, baseX, baseY, availH, U, k;
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = innerWidth; H = innerHeight;
+    cv.width = W * dpr; cv.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // in the tutorial the guide card sits on the left (wide) or on top (narrow)
+    baseX = TUT && W >= TUT_WIDE ? 380 + (W - 380) / 2 : W / 2;
+    baseY = H * (W < 520 ? 0.60 : 0.66);
+    if (TUT && W < TUT_WIDE) baseY = H * 0.72;
+    availH = baseY - (TUT && W < TUT_WIDE ? Math.max(260, H * 0.44) : Math.max(150, H * 0.2));
+    U = availH / 14;
+    k = clamp(availH / 400, 0.6, 1.4);
+    const rw = Math.min(220, W - 32);
+    rc.style.width = rw + 'px'; rc.width = rw * dpr; rc.height = 26 * dpr;
+    rctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  addEventListener('resize', resize);
+  resize();
+
+  function freshMods() {
+    return {
+      stemW: 1, segLen: 1, leafSize: 1, leafUp: 0, leafWr: 1, leafKeep: 1, leafExtra: 0,
+      lean: 0, correct: 1, tendril: 0, wind: 0, bloom: 1, petalsExtra: 0,
+      tint: { h: 0, s: 1, l: 0 }, stemHue: 0,
+      drops: false, frost: false, moon: false, sun: false, shade: false, bee: false, fungus: false, vine: false, warmth: false,
+    };
+  }
+
+  let S;
+  function reset() {
+    S = {
+      stage: 'seed', growth: 0, fast: 0, slow: 0, mid: 0,
+      segs: [], branches: [], leaves: [], roots: [], marks: [], parts: [], shrooms: [],
+      shake: 0, crack: 0, lastClick: 0, germAt: 0, afterChoice: false,
+      kick: 0, breath: 0, scale: 1, side: 1, dim: 0, pick: null, matureAt: 0,
+      flower: null, pts: [], step: 0, picks: {}, traits: { lush: 0, hardy: 0, lunar: 0, wild: 0 },
+      M: freshMods(), tint: { h: 0, s: 1, l: 0 }, sky: { sun: 0, moon: 0, shade: 0 },
+      mouse: { x: -9999, y: -9999, on: false }, statusKey: '', lastPetal: 0,
+      sd: { mode: 'air', x: 0, y: 0, vx: 0, vy: 0, hs: 1, sq: 0, sqV: 0, bounce: 0, failT: 0 }, auto: null, autoDone: null, rushAt: 0,
+      // interaction feel carried over from the Seed to Flower prototype
+      st: null,                                            // stretch-to-grow drag
+      pull: spring(0, 200, 19), bend: spring(0, 200, 19),  // rubber-band stretch and sideways lean of the stem
+      tug: freshTug(), burst: null, fh: 1,                 // pull-to-pick
+      lastT: 0, tipBase: null,
+    };
+    finalEl.classList.remove('show'); finalEl.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('done');
+    const keep = $('keep'); keep.disabled = false; keep.textContent = 'Add to archive';
+    hideChoice();
+    renderPath();
+    cv.setAttribute('aria-label', 'A seed. Drag it into the soil, or press Space to drop it.');
+  }
+
+  function setStatus(key, html) {
+    if (S.statusKey === key) return;
+    S.statusKey = key; statusEl.innerHTML = html;
+  }
+
+  function renderPath() {
+    if (!S.step) { pathEl.innerHTML = ''; return; }
+    pathEl.innerHTML = '<span>Path</span>' + STEPS.slice(0, S.step).map(st => {
+      const o = st.opts.find(o => o.id === S.picks[st.key]);
+      return `<i>${o.en}</i>`;
+    }).join('<s>→</s>');
+  }
+
+  // ---------- Choice panel ----------
+  function openChoice(now) {
+    const st = STEPS[S.step];
+    S.prevStage = S.stage; S.stage = 'choosing';
+    $('stepLabel').textContent = `Step ${S.step + 1} / ${STEPS.length} · ${st.en}`;
+    $('dots').innerHTML = STEPS.map((_, i) => `<span class="${i <= S.step ? 'on' : ''}"></span>`).join('');
+    $('question').textContent = st.q;
+    $('opts').innerHTML = st.opts.map(o =>
+      `<button class="opt" type="button" data-id="${o.id}"><span class="sw" style="background:${o.sw}"></span><b>${o.en}</b><small>${o.hint}</small></button>`).join('');
+    choiceEl.hidden = false;
+    requestAnimationFrame(() => choiceEl.classList.add('show'));
+    setStatus('choose' + S.step, 'Growth paused. <b>Make a choice.</b>');
+    setTimeout(() => { const b = choiceEl.querySelector('.opt'); if (b && S.stage === 'choosing') b.focus({ preventScroll: true }); }, 60);
+  }
+  function hideChoice() { choiceEl.classList.remove('show'); choiceEl.hidden = true; }
+
+  $('opts').addEventListener('click', e => {
+    const btn = e.target.closest('.opt');
+    if (!btn || S.stage !== 'choosing') return;
+    const now = performance.now();
+    const st = STEPS[S.step];
+    const o = st.opts.find(x => x.id === btn.dataset.id);
+    S.picks[st.key] = o.id;
+    Object.entries(o.t).forEach(([t, v]) => S.traits[t] += v);
+    applyChoice(o.id);
+    S.step++;
+    renderPath();
+    hideChoice();
+    S.kick = 1;
+    if (st.key === 'soil') germinate(now);
+    else { S.stage = 'growing'; S.lastClick = now; S.afterChoice = true; S.statusKey = ''; setStatus('picked', `${o.en}. <b>Stretch the plant upward</b> to let it grow.`); }
+    cv.focus({ preventScroll: true });
+    if (TUT) tutChoice(st, o);
+  });
+
+  function applyChoice(id) {
+    const M = S.M;
+    switch (id) {
+      case 'clay': M.stemW = 1.45; M.segLen = 0.9; M.stemHue = -18; break;
+      case 'sand': M.stemW = 0.7; M.leafWr = 0.55; M.leafKeep = 0.65; break;
+      case 'humus': M.leafSize = 1.18; M.leafExtra = 0.45; break;
+      case 'mist': M.leafSize *= 0.8; M.leafUp = -0.35; break;
+      case 'steady': M.correct = 1.4; break;
+      case 'flood': M.leafUp = 0.65; M.drops = true; M.tint.h += 22; M.tint.s *= 0.8;
+        S.leaves.forEach(l => l.off += 0.5); for (let i = 0; i < 3; i++) addRoot(0.5); break;
+      case 'sun': M.sun = true; M.correct *= 1.3; M.tint.l += 6; M.tint.s *= 1.1; break;
+      case 'moon': M.moon = true; M.tint.s *= 0.45; M.tint.l += 14;
+        for (let i = 0; i < 9; i++) S.parts.push({ type: 'fly', x: baseX + rand(-140, 140) * k, y: baseY - rand(20, availH), ph: rand(0, 6), sp: rand(0.4, 1) });
+        break;
+      case 'shade': M.shade = true; M.lean = 0.07; M.segLen *= 1.25; M.leafSize *= 0.85; M.tint.l -= 7; break;
+      case 'bee': M.bee = true; M.petalsExtra = 3; break;
+      case 'vine': M.vine = true; M.tendril = 0.5;
+        for (let i = 0; i < 3; i++) S.leaves.push(makeTendril(Math.floor(rand(0, S.segs.length))));
+        break;
+      case 'fungus': M.fungus = true;
+        for (let i = 0; i < 4; i++) S.shrooms.push({ x: rand(-70, 70) * k, s: rand(0.6, 1.2) * k, g: 0, d: i * 0.25, h: rand(270, 300) });
+        break;
+      case 'wind': M.wind = 0.035; break;
+      case 'frost': M.frost = true; M.tint.h += 40; M.tint.s *= 0.6; M.tint.l += 8; M.bloom = 0.85; break;
+      case 'warmth': M.warmth = true; M.bloom = 1.22; M.tint.s *= 1.15; break;
+    }
+  }
+
+  // ---------- Growth ----------
+  function addRoot(wiggle) {
+    const soil = S.picks.soil;
+    const deep = soil === 'clay' ? 1.5 : soil === 'sand' ? 1.9 : soil === 'humus' ? 0.75 : 1;
+    S.roots.push({ a: rand(-1.15, 1.15), len: rand(14, 34) * k * deep * (1 + S.roots.length * 0.08), g: 0, w: wiggle, ph: rand(0, 6) });
+  }
+  const cumAngle = () => S.segs.reduce((s, g) => s + g.dA, 0);
+  function makeTendril(seg) {
+    return { br: null, seg: Math.max(0, seg), f: rand(0.3, 0.95), side: Math.random() < 0.5 ? -1 : 1, off: 0, size: rand(10, 18) * k, base: 0, g: 0, kind: 'curl', turn: 0, seed: Math.random() };
+  }
+  function makeLeaf(seg, f, side, off, size, wr, kind, h, s, l, br = null) {
+    const M = S.M;
+    const sz = size * M.leafSize;
+    return { br, seg, f, side, off: off + M.leafUp, size: sz, base: sz, g: 0, wr: wr * M.leafWr, kind, h, s, l, turn: 0, seed: Math.random() };
+  }
+
+  // ---------- Side branches ----------
+  // A branch hangs off a main-stem segment and has its own short segments and leaves.
+  function newBranch(seg, f, kind) {
+    const M = S.M;
+    let side;
+    if (kind === 'slow') { S.side *= -1; side = S.side; } else side = Math.random() < 0.5 ? -1 : 1;
+    const b = {
+      seg: Math.min(seg, S.segs.length - 1), f, side, kind,
+      a0: kind === 'slow' ? rand(0.78, 0.9) : kind === 'mid' ? rand(0.6, 1.05) : rand(0.4, 1.4),
+      segs: [], pts: [],
+    };
+    S.branches.push(b);
+    extendBranch(b);
+    if (kind === 'fast' && Math.random() < 0.5) branchLeaf(b, b.segs.length - 1, 'fast');
+  }
+  function extendBranch(b) {
+    const M = S.M;
+    const len = (b.kind === 'slow' ? rand(0.5, 0.62) : b.kind === 'mid' ? rand(0.38, 0.5) : rand(0.2, 0.32)) * U * M.segLen;
+    const curl = b.kind === 'slow' ? -b.side * rand(0.12, 0.18) : b.kind === 'mid' ? -b.side * rand(0, 0.2) : rand(-0.5, 0.5);
+    b.segs.push({ len, dA: curl + M.lean * 0.6, g: 0 });
+    branchLeaf(b, b.segs.length - 1, b.kind);
+  }
+  function branchLeaf(b, si, kind) {
+    const bi = S.branches.indexOf(b);
+    const side = kind === 'slow' ? (si % 2 ? 1 : -1) * b.side * -1 : Math.random() < 0.5 ? -1 : 1;
+    if (kind === 'slow') pushLeaf(makeLeaf(si, rand(0.88, 1), side, rand(-0.3, 0), rand(20, 27) * k, 0.46, 'calm', rand(98, 112), rand(30, 38), rand(36, 44), bi));
+    else if (kind === 'mid') pushLeaf(makeLeaf(si, rand(0.6, 1), side, rand(-0.35, 0.2), rand(13, 18) * k, 0.42, 'mid', rand(88, 104), rand(34, 42), rand(40, 48), bi));
+    else pushLeaf(makeLeaf(si, rand(0.3, 1), side, rand(-0.6, 0.5), rand(7, 12) * k, 0.34, 'fast', rand(70, 92), rand(40, 52), rand(44, 56), bi));
+  }
+  function segOf(l) {
+    if (l.br == null) return S.segs[l.seg];
+    const b = S.branches[l.br];
+    return b && b.segs[l.seg];
+  }
+  function pushLeaf(leaf) {
+    if (Math.random() > S.M.leafKeep) return;
+    S.leaves.push(leaf);
+    if (Math.random() < S.M.leafExtra) {
+      const c = { ...leaf, side: -leaf.side, f: clamp(leaf.f - rand(0.15, 0.4), 0.2, 1), size: leaf.size * 0.8, base: leaf.base * 0.8, seed: Math.random() };
+      S.leaves.push(c);
+    }
+  }
+
+  function germinate(now) {
+    S.stage = 'germinating'; S.germAt = now; S.shake = 1;
+    const n = S.picks.soil === 'humus' ? 6 : S.picks.soil === 'sand' ? 2 : 4;
+    for (let i = 0; i < n; i++) addRoot(S.picks.soil === 'humus' ? 0.9 : 0.25);
+    setStatus('germ', 'Something is waking up.');
+  }
+
+  function grow(now, force) {
+    let dt = S.lastClick ? now - S.lastClick : 99999;
+    S.lastClick = now;
+    let kind = dt < FAST ? 'fast' : dt > SLOW ? 'slow' : 'mid';
+    if (force) { kind = force; S.afterChoice = false; }
+    const raw = kind;
+    const counted = !S.afterChoice; // a pause spent choosing shouldn't count as patience
+    if (S.afterChoice) { kind = S.marks.length ? S.marks[S.marks.length - 1].kind : 'mid'; S.afterChoice = false; }
+    if (counted) S[kind]++;
+    S.growth++;
+    S.marks.push({ t: now, kind });
+    S.kick = 1;
+    const M = S.M, n = S.segs.length, cum = cumAngle();
+
+    // 1) The main stem only grows a little each click.
+    if (kind === 'slow') {
+      S.segs.push({ len: U * rand(0.48, 0.58) * M.segLen, dA: -cum * 0.5 * M.correct + rand(-0.1, 0.1) + M.lean, g: 0, fast: false });
+    } else if (kind === 'mid') {
+      S.segs.push({ len: U * rand(0.4, 0.5) * M.segLen, dA: -cum * 0.3 * M.correct + rand(-0.22, 0.22) + M.lean, g: 0, fast: false });
+    } else {
+      const sign = (S.segs.length % 2 ? 1 : -1);
+      S.segs.push({ len: U * rand(0.26, 0.38) * M.segLen, dA: sign * rand(0.22, 0.5) - cum * 0.12 + M.lean, g: 0, fast: true });
+    }
+    const top = S.segs.length - 1;
+
+    // 2) Most of the growth goes sideways, into branches.
+    if (S.segs.length < 3) {
+      // too close to the ground for branches yet: a leaf on the stem instead
+      S.side *= -1;
+      pushLeaf(makeLeaf(top, rand(0.8, 1), S.side, rand(-0.25, 0.05), rand(12, 16) * k, 0.46, 'calm', rand(98, 108), 34, 42));
+    } else if (kind === 'slow') {
+      const open = S.branches.filter(b => b.kind === 'slow' && b.segs.length < 4);
+      if (S.growth % 2 === 1 || !open.length) newBranch(top, rand(0.85, 1), 'slow');
+      else extendBranch(open[open.length - 1]);
+      S.leaves.forEach(l => { if (l.kind === 'calm') l.size = Math.min(l.size * 1.06, l.base * 1.5); });
+    } else if (kind === 'mid') {
+      const open = S.branches.filter(b => b.segs.length < 3);
+      if (Math.random() < 0.5 || !open.length) newBranch(Math.max(2, top - Math.floor(rand(0, 2))), rand(0.5, 1), 'mid');
+      else extendBranch(pick(open));
+    } else {
+      if (Math.random() < 0.65) newBranch(Math.max(2, top - Math.floor(rand(0, 3))), rand(0.3, 1), 'fast');
+      const open = S.branches.filter(b => b.segs.length < 3);
+      const times = 1 + (Math.random() < 0.5 ? 1 : 0);
+      for (let j = 0; j < times && open.length; j++) extendBranch(pick(open));
+      if (Math.random() < 0.35) addRoot(1);
+    }
+    if (Math.random() < (kind === 'fast' ? 0.3 + M.tendril : M.tendril * 0.6)) S.leaves.push(makeTendril(top));
+    if (S.growth % 5 === 0) addRoot(kind === 'fast' ? 1 : 0.2);
+
+    return { raw, dt, kind };
+  }
+
+  // ---------- One stretch = one stage of growth ----------
+  // A stage is grown by hand (see "Growing" below); when its last step lands,
+  // the next choice opens, or the flower forms.
+  function nextStage() {
+    if (S.step < STEPS.length) openChoice(performance.now());
+    else startFlower(performance.now(), false);
+  }
+  function tickAuto(now) {
+    if (S.autoDone && now >= S.autoDone.at) { const cb = S.autoDone.cb; S.autoDone = null; cb && cb(); }
+    const A = S.auto;
+    if (!A || A.manual || S.stage !== 'growing' || now < A.next) return;
+    const rushed = now - S.rushAt < 700;
+    const kind = rushed ? 'fast' : (A.i % 2 ? 'mid' : 'slow');
+    grow(now, kind);
+    A.i++;
+    A.next = now + (rushed ? 300 : 520);
+    if (A.i >= A.n) { S.auto = null; S.autoDone = { at: now + 700, cb: A.onDone }; }
+  }
+
+  // ---------- Petal shapes ----------
+  const SHAPE_OF = { lush: 'round', hardy: 'star', lunar: 'lily', wild: 'frill' };
+  const SHAPE_NAME = { round: 'round', star: 'pointed', lily: 'curled lily', frill: 'frilled' };
+  // per-shape proportions: petal count multiplier, length, width
+  const SHAPE_FIT = {
+    round: { n: 0.75, len: 0.95, w: 0.95 },
+    star:  { n: 1.5, len: 1.05, w: 0.55 },
+    lily:  { n: 0.8, len: 1.25, w: 0.75 },
+    frill: { n: 0.85, len: 1, w: 0.85 },
+  };
+  // Draws one petal pointing along +x, starting at r0. `tip` (0..1) blunts the
+  // classic shape; `flip` sets which way a lily tip curls; `seed` varies frills.
+  function petalPath(g, p, r0, len, w, tip) {
+    const x = u => r0 + len * u;
+    g.beginPath();
+    switch (p.shape) {
+      case 'round': { // spoon-shaped, wide rounded end
+        g.moveTo(r0, 0);
+        g.bezierCurveTo(x(0.18), -w * 0.45, x(0.55), -w * 1.25, x(0.9), -w * 0.78);
+        g.quadraticCurveTo(x(1.06), 0, x(0.9), w * 0.78);
+        g.bezierCurveTo(x(0.55), w * 1.25, x(0.18), w * 0.45, r0, 0);
+        break;
+      }
+      case 'star': { // narrow, straight-sided, sharp point
+        g.moveTo(r0, 0);
+        g.lineTo(x(0.28), -w * 0.9);
+        g.quadraticCurveTo(x(0.6), -w * 0.55, x(1), 0);
+        g.quadraticCurveTo(x(0.6), w * 0.55, x(0.28), w * 0.9);
+        g.closePath();
+        break;
+      }
+      case 'lily': { // long, tip curls back to one side
+        const s = p.flip || 1;
+        g.moveTo(r0, 0);
+        g.bezierCurveTo(x(0.3), -w * 1.05, x(0.78), -w * 0.75, x(1), s * w * 0.55);
+        g.quadraticCurveTo(x(0.9), s * w * 0.85, x(0.82), s * w * 0.6);
+        g.bezierCurveTo(x(0.7), w * 0.95, x(0.3), w * 1.05, r0, 0);
+        break;
+      }
+      case 'frill': { // ruffled, jagged outline
+        const N = 14, seed = p.seed || 1;
+        const half = u => w * Math.pow(Math.sin(Math.PI * Math.min(1, u * 1.05)), 0.7) * (0.55 + 0.45 * u);
+        g.moveTo(r0, 0);
+        for (let i = 1; i <= N; i++) {
+          const u = i / N, j = i % 2 ? 1.25 : 0.8 + 0.15 * Math.sin(seed + i);
+          g.lineTo(x(u * 0.97), -half(u) * j);
+        }
+        g.lineTo(x(1), 0);
+        for (let i = N; i >= 1; i--) {
+          const u = i / N, j = i % 2 ? 1.25 : 0.8 + 0.15 * Math.cos(seed + i);
+          g.lineTo(x(u * 0.97), half(u) * j);
+        }
+        g.closePath();
+        break;
+      }
+      default: { // classic oval (older archive records)
+        g.moveTo(r0, 0);
+        g.bezierCurveTo(x(0.3), -w, x(1), -w * tip, x(1), 0);
+        g.bezierCurveTo(x(1), w * tip, x(0.3), w, r0, 0);
+      }
+    }
+  }
+  // A thin centre vein on lily and round petals makes the shape read at small sizes.
+  function petalVein(g, p, r0, len, lw) {
+    if (p.shape !== 'lily' && p.shape !== 'round') return;
+    g.beginPath(); g.moveTo(r0 + len * 0.1, 0);
+    g.quadraticCurveTo(r0 + len * 0.6, 0, r0 + len * (p.shape === 'lily' ? 0.9 : 0.75), p.shape === 'lily' ? (p.flip || 1) * len * 0.04 : 0);
+    g.lineWidth = lw; g.stroke();
+  }
+
+  // ---------- Flower ----------
+  function startFlower(now, bud) {
+    if (S.flower) return;
+    const M = S.M;
+    const total = Math.max(1, S.fast + S.slow + S.mid);
+    const ratio = S.fast / total;
+    // base palette from the light + climate choices
+    let hue = rand(22, 38), sat = 60, lit = 86;
+    if (M.sun) { hue = rand(36, 46); sat = 78; lit = 76; }
+    if (M.moon) { hue = 220; sat = 22; lit = 93; }
+    if (M.shade) { hue = rand(270, 290); sat = 34; lit = 72; }
+    if (M.frost) { hue = 200; sat *= 0.75; lit = Math.min(94, lit + 4); }
+    if (M.warmth) { if (!M.moon) hue = rand(10, 22); sat = Math.min(92, sat + 18); lit -= 8; }
+    let wild = [330, 12, 290, 345, 25, 305];
+    if (M.frost) wild = [190, 210, 250, 175, 230];
+    else if (M.moon) wild = [260, 200, 300, 230];
+    else if (M.warmth) wild = [8, 20, 340, 35, 355];
+
+    const f = { bud, ratio, bloom: 0, open: bud ? 0.1 : 0.7, petals: [], dots: [], glow: M.moon };
+    if (!bud) {
+      // Petal SHAPE comes from the plant's two strongest traits:
+      // outer ring = strongest, inner rings = second strongest.
+      const tr = { ...S.traits };
+      tr.wild += ratio * 3;
+      tr.lush += (S.slow / Math.max(1, S.growth)) * 2;
+      const order = Object.keys(tr).sort((a, b) => tr[b] - tr[a]);
+      const shapes = [SHAPE_OF[order[0]], SHAPE_OF[order[1]]];
+      f.shapes = shapes; f.order = order;
+      const jitter = clamp(ratio * 1.15, 0, 1);
+      const n0 = 5 + Math.round(ratio * 9) + M.petalsExtra - (M.wind ? 1 : 0);
+      const rings = Math.max(2, (ratio > 0.5 ? 3 : ratio > 0.3 ? 2 : 1) + (M.bee ? 1 : 0));
+      const baseL = (ratio > 0.5 ? 22 : 26) * k * (0.85 + S.growth * 0.01) * M.bloom;
+      for (let r = 0; r < rings; r++) {
+        const shape = r === 0 ? shapes[0] : shapes[1];
+        const SH = SHAPE_FIT[shape];
+        const nr = Math.max(4, Math.round((n0 + r * Math.round(ratio * 3)) * SH.n) - (r > 0 && ratio < 0.3 ? 1 : 0));
+        const flip = Math.random() < 0.5 ? -1 : 1;
+        for (let i = 0; i < nr; i++) {
+          const chaotic = Math.random() < ratio;
+          const h = chaotic ? pick(wild) + rand(-8, 8) : hue;
+          f.petals.push({
+            ring: r, shape, flip, seed: Math.round(Math.random() * 1000),
+            a: (i / nr) * Math.PI * 2 + r * (Math.PI / nr) + jitter * rand(-0.38, 0.38),
+            len: baseL * SH.len * (1 - r * 0.38) * (1 + jitter * rand(-0.45, 0.5)),
+            w: SH.w * (0.48 - jitter * 0.16) * (1 + jitter * rand(-0.3, 0.3)),
+            point: M.frost ? Math.max(jitter, 0.6) : jitter,
+            col: chaotic ? `hsl(${h},${rand(62, 78) * (M.frost ? 0.7 : 1)}%,${rand(56, 70) - r * 6}%)` : `hsl(${h},${Math.max(10, sat - r * 8)}%,${lit - r * 9}%)`,
+          });
+        }
+      }
+      const nd = Math.round(4 + ratio * 18 + (M.bee ? 14 : 0));
+      for (let i = 0; i < nd; i++) f.dots.push({ a: rand(0, Math.PI * 2), r: rand(1, 7 + ratio * 4) * k, s: rand(0.8, 1.8) });
+      f.center = M.fungus ? 'hsl(285,45%,42%)' : `hsl(${ratio > 0.5 ? 48 : 40},80%,${ratio > 0.5 ? 50 : 56}%)`;
+      f.dot = M.bee ? 'rgba(250,210,80,0.95)' : 'rgba(60,40,20,0.75)';
+    } else {
+      f.col = `hsl(${M.moon ? 220 : M.frost ? 205 : M.shade ? 285 : 340},${M.moon ? 20 : 45}%,${M.moon ? 88 : 64}%)`;
+    }
+    S.flower = f; S.stage = 'flowering';
+    hideChoice();
+    // bud gives way, then the petals unfurl one after another
+    Sound.pop();
+    if (!bud) for (let i = 0; i < 6; i++) setTimeout(() => { if (S.flower === f) Sound.petal(i); }, 700 + i * 260);
+  }
+
+  // ---------- Branch result ----------
+  const TYPES = {
+    lush:  { en: 'Garden Bloom', adj: 'Lush' },
+    hardy: { en: 'Stonewort', adj: 'Hardy' },
+    lunar: { en: 'Moon Lily', adj: 'Quiet' },
+    wild:  { en: 'Tangleweed', adj: 'Wild' },
+  };
+  function finish(now) {
+    S.stage = 'mature';
+    Sound.bloom();
+    const f = S.flower;
+    const tr = { ...S.traits };
+    tr.wild += f.ratio * 3;
+    tr.lush += (S.slow / Math.max(1, S.growth)) * 2;
+    if (f.bud) tr.hardy += 1;
+    const order = Object.keys(tr).sort((a, b) => tr[b] - tr[a]);
+    const p = TYPES[order[0]], s = TYPES[order[1]];
+    const name = (f.bud ? 'Sleeping' : s.adj) + ' ' + p.en;
+    const en = (f.bud ? 'Sleeping ' : '') + p.en;
+    $('kind').innerHTML = `${name}`;
+
+    let rhythm;
+    if (f.bud) rhythm = 'It was mostly left alone, so it stayed small and its flower stayed closed.';
+    else if (f.ratio > 0.5) rhythm = 'Quick, restless hands: a twisted stem, many small leaves and layers of irregular petals.';
+    else if (f.ratio < 0.25 && S.slow >= S.mid) rhythm = 'Patient hands: a balanced stem, broad leaves and a simple, symmetrical flower.';
+    else rhythm = 'Your rhythm was sometimes fast and sometimes slow, so it grew somewhere in between.';
+    const picks = STEPS.filter(st => S.picks[st.key]).map(st => st.opts.find(o => o.id === S.picks[st.key]).en);
+    const skipped = STEPS.length - picks.length;
+    const pathLine = picks.length ? `${picks.join(' → ')}${skipped ? ` (${skipped} step${skipped > 1 ? 's' : ''} never reached)` : ''}. ` : '';
+    let petals = '';
+    if (f.shapes) petals = f.shapes[0] === f.shapes[1]
+      ? `${SHAPE_NAME[f.shapes[0]][0].toUpperCase() + SHAPE_NAME[f.shapes[0]].slice(1)} petals.`
+      : `${SHAPE_NAME[f.shapes[0]][0].toUpperCase() + SHAPE_NAME[f.shapes[0]].slice(1)} outer petals, ${SHAPE_NAME[f.shapes[1]]} inner petals.`;
+    $('finalNote').textContent = `${pathLine}${petals ? petals + ' ' : ''}${rhythm}${f.bud ? ' Bring your cursor close and it opens a little.' : ' Move your cursor near it.'}`;
+    cv.setAttribute('aria-label', `Your grown plant: ${en}. ${pathLine}${rhythm}`);
+    S.result = { name, path: picks, skipped, note: rhythm, kind: order[0], petals };
+    S.matureAt = now;
+    setStatus('pick', f.bud
+      ? 'It has grown. Move your cursor to see it respond, <b>then pull the bud until it snaps.</b>'
+      : 'It has bloomed. Move your cursor to see it respond, <b>then pull the flower until it snaps.</b>');
+  }
+
+  // ---------- Picking the flower ----------
+  function flowerHit(x, y) {
+    const top = S.pts[S.pts.length - 1];
+    if (!top || !S.flower) return false;
+    return Math.hypot(x - top.x, y - (top.y - 10 * k)) < (S.flower.bud ? 30 : 46) * k + 10;
+  }
+  function pickFlower(now) {
+    const top = S.pts[S.pts.length - 1];
+    S.stage = 'picked';
+    S.pick = { t0: now, x: top.x, y: top.y, a: top.a * 0.6, prog: 0, shown: false };
+    S.kick = 1.2;
+    // a couple of petals shaken loose by the snap
+    if (!S.flower.bud) for (let i = 0; i < 4; i++)
+      S.parts.push({ type: 'petal', x: top.x, y: top.y - 8 * k, vx: rand(-1, 1), vy: rand(-1.4, -0.4), r: rand(0, 6), life: 1, col: pick(S.flower.petals).col });
+    setStatus('plucked', '');
+    cv.style.cursor = 'default';
+  }
+  function flowerRadius() {
+    const f = S.flower;
+    if (f.bud) return 18 * k;
+    return Math.max(...f.petals.map(p => p.len)) + 3 * k;
+  }
+  // where the picked flower is drawn, eased from the stem tip to the centre of the screen
+  function pickPose() {
+    const p = S.pick, e = ease(p.prog);
+    const tx = W / 2, ty = Math.max(160, H * 0.36);
+    const zoom = clamp(Math.min(W, H) * (S.flower.bud ? 0.13 : 0.2) / flowerRadius(), 1.6, 6);
+    const lift = Math.sin(Math.PI * clamp(p.prog, 0, 1)) * 30;
+    return { x: p.x + (tx - p.x) * e, y: p.y + (ty - p.y) * e - lift, a: p.a * (1 - e) + Math.sin(p.prog * 9) * 0.25 * (1 - e), s: 1 + (zoom - 1) * e, stub: true };
+  }
+  function showFinal() {
+    document.body.classList.add('done');
+    finalEl.classList.add('show');
+    finalEl.setAttribute('aria-hidden', 'false');
+  }
+
+  // ---------- Input ----------
+  function nearPlant(x, y) {
+    if (S.stage === 'seed' || S.stage === 'germinating') return Math.hypot(x - baseX, y - (baseY - 4)) < 46;
+    for (const p of S.pts) if (Math.hypot(x - p.x, y - p.y) < 60) return true;
+    for (const b of S.branches) for (const p of b.pts) if (Math.hypot(x - p.x, y - p.y) < 40) return true;
+    return false;
+  }
+  function act(x, y) {
+    const now = performance.now();
+    if (TUT) { tutAct(x, y, now); return; }
+    if (S.stage === 'seed') return; // the seed is dragged, not clicked
+    if (S.stage === 'choosing') { S.kick = 0.4; return; }
+    // growing and picking are drags now (see stretch / tug below); a plain click just nudges the plant
+    if ((S.stage === 'growing' || S.stage === 'mature') && nearPlant(x, y)) S.kick = 0.6;
+  }
+  // ---------- Sowing: drag the floating seed over the hole and let go (Planting a Seed) ----------
+  const HOLE = () => ({ x: baseX, y: baseY + 2 });
+  const SEED_R = 11;                                   // seed half-height: its centre sits this far above its bottom
+  function airPos(t) {
+    return { x: baseX + Math.sin(t * 0.0007) * 6 * RM, y: baseY - Math.min(availH * 0.55, 230) + Math.sin(t * 0.0016) * 7 * RM };
+  }
+  function seedPos(t) {
+    const sd = S.sd;
+    if (sd.mode === 'air') return airPos(t);
+    if (sd.mode === 'in') return { x: baseX, y: baseY - 4 };
+    return { x: sd.x, y: sd.y };
+  }
+  // lined up when the seed is over the opening and still above it
+  const seedAligned = () => Math.abs(S.sd.x - baseX) <= 22 && S.sd.y + SEED_R <= baseY + 4;
+  function dropFrom(p) {
+    const sd = S.sd;
+    sd.x = p.x; sd.y = p.y; sd.vx = 0; sd.vy = 0;
+    if (seedAligned()) { sd.mode = 'fall'; sd.bounce = 0; setStatus('falling', ''); }
+    else { sd.mode = 'fail'; sd.failT = 0; setStatus('missed', 'Not quite. <b>Let go right over the hole.</b>'); }
+  }
+  function plantSeed(now) {
+    S.sd.mode = 'in';
+    S.shake = 0.8;
+    for (let i = 0; i < 6; i++)
+      S.parts.push({ type: 'petal', x: baseX + rand(-6, 6), y: baseY - 2, vx: rand(-1.2, 1.2), vy: rand(-1.6, -0.6), r: rand(0, 6), life: 0.55, col: 'hsl(30,28%,30%)' });
+    setStatus('planted', '');
+    setTimeout(() => {
+      if (S.stage !== 'seed') return;
+      if (TUT) tutPlanted(); else openChoice(performance.now());
+    }, 450);
+  }
+  // gravity, three shrinking bounces with squash, settle; a miss falls briefly then springs home
+  function seedPhysics(now, dt) {
+    const sd = S.sd, G = 2600, FLOOR = baseY - 4, BOUNCES = [12, 5, 2];
+    if (sd.mode === 'fall') {
+      sd.vy += G * dt; sd.y += sd.vy * dt;
+      sd.x += (baseX - sd.x) * Math.min(1, dt * 12);
+      if (sd.y >= FLOOR) {
+        sd.y = FLOOR;
+        const impact = sd.vy;
+        Sound.thud(impact / 1000);
+        if (!reduce) { sd.sq = Math.min(0.3, impact / 3200); sd.sqV = 0; }
+        if (!reduce && sd.bounce < BOUNCES.length) { sd.vy = -Math.sqrt(2 * G * BOUNCES[sd.bounce] * k); sd.bounce++; }
+        else { sd.vy = 0; sd.x = baseX; plantSeed(now); }
+      }
+    } else if (sd.mode === 'fail') {
+      sd.vy += G * dt; sd.y += sd.vy * dt; sd.failT += dt;
+      if (sd.failT > 0.22) { sd.mode = 'return'; sd.vx = 0; sd.vy *= 0.35; }
+    } else if (sd.mode === 'return') {
+      const home = airPos(now), kk = 160, c = 20;
+      sd.vx += (kk * (home.x - sd.x) - c * sd.vx) * dt;
+      sd.vy += (kk * (home.y - sd.y) - c * sd.vy) * dt;
+      sd.x += sd.vx * dt; sd.y += sd.vy * dt;
+      // home keeps bobbing, so settle once close and slow, then hand back to the float
+      if (Math.hypot(home.x - sd.x, home.y - sd.y) < 2 && Math.hypot(sd.vx, sd.vy) < 40) sd.mode = 'air';
+    }
+    // squash springs back to round; hover / hold enlargement
+    sd.sqV += (-900 * sd.sq - 26 * sd.sqV) * dt; sd.sq += sd.sqV * dt;
+    if (Math.abs(sd.sq) < 0.001 && Math.abs(sd.sqV) < 0.01) { sd.sq = 0; sd.sqV = 0; }
+    const p = seedPos(now);
+    const hov = sd.mode === 'air' && S.mouse.on && Math.hypot(S.mouse.x - p.x, S.mouse.y - p.y) < 38;
+    const target = sd.mode === 'drag' ? 1.14 : hov ? 1.08 : 1;
+    sd.hs += (target - sd.hs) * Math.min(1, dt * 16);
+  }
+
+  // ---------- Growing: grab the tip and stretch it upward (Grow a Flower) ----------
+  // Each stage (between two choices) is a fixed number of growth steps. Upward travel commits
+  // steps and growth only moves forward. How fast you pull sets each step's rhythm:
+  // a slow, steady pull is patient; a yank rushes it and twists the stem.
+  const stepLen = () => Math.max(16, U * 0.8);
+  function tipHit(x, y) {
+    const top = S.pts[S.pts.length - 1];
+    return !!top && S.pts.length > 1 && Math.hypot(x - top.x, y - top.y) < 50;
+  }
+  function stageOpen() {
+    if (S.stage !== 'growing' || S.autoDone) return false;
+    if (S.auto && !S.auto.manual) return false;
+    return !TUT || (tutAccepts() && tutCur().id === 'grow');
+  }
+  function beginStage() {
+    if (S.auto) return S.auto;
+    const n = S.step >= STEPS.length ? 3 : 4;
+    const next = TUT ? tutCur().next : null;
+    S.auto = { n, i: 0, prog: 0, manual: true, onDone: TUT ? () => tutGrowDone(next) : nextStage };
+    return S.auto;
+  }
+  function stageStep(now, kind) {
+    const A = S.auto;
+    if (!A || A.i >= A.n) return;
+    const r = grow(now, kind);
+    if (r.kind === 'fast') S.rushAt = now;
+    A.i++;
+    Sound.rustle(S.side * 0.3, 0, r.kind === 'fast' ? 0.45 : 0.3);
+    if (A.i >= A.n) {
+      endStretch();
+      S.auto = null;
+      S.autoDone = { at: now + 700, cb: A.onDone };
+      if (TUT) { TUT.busy = A.onDone && tutCur().next === 'bloom' ? 'Growing toward a flower…' : 'Growing…'; renderTut(); }
+    }
+  }
+  const kindOf = v => v > 520 ? 'fast' : v < 170 ? 'slow' : 'mid';   // pull speed in px/s
+  function startStretch(e, x, y) {
+    const A = beginStage();
+    const top = S.pts[S.pts.length - 1];
+    S.st = { id: e.pointerId, startY: y, base: A.prog, offX: x - top.x, offY: y - top.y, v: 0, lastY: y, lastT: performance.now() };
+    try { cv.setPointerCapture(e.pointerId); } catch (err) {}
+    tune(S.pull, 150, 19); tune(S.bend, 200, 19);
+    cv.style.cursor = 'grabbing';
+  }
+  function stretchMove(e) {
+    const st = S.st, A = S.auto;
+    if (!st || e.pointerId !== st.id || !A) return;
+    const now = performance.now(), x = e.clientX, y = e.clientY;
+    const dt = Math.max(0.008, (now - st.lastT) / 1000);
+    st.v += ((st.lastY - y) / dt - st.v) * 0.25;
+    st.lastY = y; st.lastT = now;
+    const cand = st.base + Math.max(0, st.startY - y) / stepLen();
+    if (cand > A.prog) A.prog = cand;                        // only upward travel adds growth
+    while (S.auto === A && A.i < Math.min(A.n, Math.floor(A.prog))) stageStep(now, kindOf(st.v));
+    if (!S.st) return;
+    const tip = S.tipBase || S.pts[S.pts.length - 1];
+    S.pull.t = rubber(tip.y - (y - st.offY), 24 * k);         // pulling past the tip stretches it like a rubber band
+    S.bend.t = 34 * k * Math.tanh((x - st.offX - baseX) / 110); // pulling sideways leans it
+  }
+  function endStretch() {
+    const st = S.st;
+    if (!st) return;
+    try { cv.releasePointerCapture(st.id); } catch (err) {}
+    S.st = null;
+    S.pull.t = 0; S.bend.t = 0;
+    tune(S.pull, 130, 8); tune(S.bend, 110, 7);              // gentle elastic settle
+    cv.style.cursor = 'default';
+  }
+
+  // ---------- Picking: pull the flower until the stem snaps (Pick a Flower) ----------
+  const snapAt = () => Math.max(110, flowerRadius() * 2.6); // about one flower-head diameter of pull
+  const KB_RATE = 1 / 1.5;                                   // holding Space reaches the snap in 1.5 s
+  function tugOpen(now) {
+    return S.stage === 'mature' && now - S.matureAt > 400 && S.tug.id === null && S.tug.phase !== 'recoil'
+      && (!TUT || (tutAccepts() && tutCur().id === 'pick'));
+  }
+  function startTug(id, p) {
+    const tg = S.tug;
+    tg.id = id; tg.phase = 'pull'; tg.lastP = p; tg.grabStart = p;
+    tg.Gbase = [tg.D[0] / 0.74, tg.D[1] / 0.74];
+    cv.style.cursor = 'grabbing';
+  }
+  function endTug(id) {
+    const tg = S.tug;
+    if (tg.id === null || id !== tg.id) return;
+    if (id !== 'kb') { try { cv.releasePointerCapture(id); } catch (err) {} }
+    tg.id = null; tg.kb = false;
+    if (tg.phase === 'pull') { tg.phase = 'return'; tg.sK = 280; tg.sC = 15; tg.Dv = [0, 0]; }
+    cv.style.cursor = 'default';
+  }
+  function snap(now) {
+    const tg = S.tug, top = S.pts[S.pts.length - 1];
+    Sound.snap();
+    try { if (navigator.vibrate) navigator.vibrate(12); } catch (err) {}
+    S.burst = { t0: now, x: top.x, y: top.y };
+    const id = tg.id;
+    tg.id = null; tg.kb = false;
+    if (id !== null && id !== 'kb') { try { cv.releasePointerCapture(id); } catch (err) {} }
+    tg.phase = 'recoil'; tg.sK = 720; tg.sC = 15; tg.Dv = [0, 0];   // underdamped: short recoil, quick settle
+    if (TUT) { TUT.busy = 'Picking…'; renderTut(); }
+    pickFlower(now);
+  }
+  function tugPhysics(now, dt) {
+    const tg = S.tug;
+    tg.t = 0; tg.jx = 0; tg.jy = 0;
+    if (tg.phase === 'pull') {
+      if (tg.kb) tg.lastP = [tg.lastP[0], tg.lastP[1] - KB_RATE * snapAt() * dt];
+      const Gx = tg.lastP[0] - tg.grabStart[0] + tg.Gbase[0], Gy = tg.lastP[1] - tg.grabStart[1] + tg.Gbase[1];
+      tg.t = Math.min(Math.hypot(Gx, Gy) / snapAt(), 1);
+      const res = 0.74 - 0.2 * tg.t;                          // resistance grows with distance
+      const a = 1 - Math.exp(-dt * 26);
+      tg.D[0] += (Gx * res - tg.D[0]) * a; tg.D[1] += (Gy * res - tg.D[1]) * a;
+      if (!reduce && tg.t > 0.7) {                             // strain tremor near the break point
+        const amp = (tg.t - 0.7) / 0.3 * 1.8;
+        tg.jx = (Math.random() - 0.5) * 2 * amp; tg.jy = (Math.random() - 0.5) * 2 * amp;
+      }
+      if (tg.t >= 1) snap(now);
+    } else if (tg.phase === 'return' || tg.phase === 'recoil') {
+      for (let i = 0; i < 2; i++) { const acc = -tg.sK * tg.D[i] - tg.sC * tg.Dv[i]; tg.Dv[i] += acc * dt; tg.D[i] += tg.Dv[i] * dt; }
+      if (Math.hypot(tg.D[0], tg.D[1]) < 0.05 && Math.hypot(tg.Dv[0], tg.Dv[1]) < 0.5) {
+        tg.phase = tg.phase === 'recoil' ? 'done' : 'rest'; tg.D = [0, 0]; tg.Dv = [0, 0];
+      }
+    }
+  }
+
+  // ---------- Input ----------
+  cv.addEventListener('pointerdown', e => {
+    const x = e.clientX, y = e.clientY, now = performance.now();
+    Sound.init();
+    if (S.stage === 'seed' && S.sd.mode === 'air' && (!TUT || tutAccepts())) {
+      const p = seedPos(now);
+      if (Math.hypot(x - p.x, y - p.y) < 38) {
+        Object.assign(S.sd, { mode: 'drag', x: p.x, y: p.y, ox: p.x - x, oy: p.y - y });
+        try { cv.setPointerCapture(e.pointerId); } catch (err) {}
+        cv.style.cursor = 'grabbing';
+        return;
+      }
+    }
+    if (stageOpen() && tipHit(x, y)) { startStretch(e, x, y); return; }
+    if (tugOpen(now) && flowerHit(x, y)) {
+      try { cv.setPointerCapture(e.pointerId); } catch (err) {}
+      startTug(e.pointerId, [x, y]);
+      return;
+    }
+    act(x, y);
+  });
+  function dropSeed(e) {
+    if (S.sd.mode !== 'drag') return;
+    dropFrom({ x: S.sd.x, y: S.sd.y });
+    cv.style.cursor = 'default';
+  }
+  function onUp(e) {
+    dropSeed(e);
+    if (S.st && e.pointerId === S.st.id) endStretch();
+    endTug(e.pointerId);
+  }
+  cv.addEventListener('pointerup', onUp);
+  cv.addEventListener('pointercancel', onUp);
+  cv.addEventListener('pointermove', e => {
+    S.mouse.x = e.clientX; S.mouse.y = e.clientY; S.mouse.on = true;
+    const x = e.clientX, y = e.clientY;
+    if (S.sd.mode === 'drag') { S.sd.x = x + S.sd.ox; S.sd.y = Math.min(y + S.sd.oy, baseY + 10); return; }
+    if (S.st) { stretchMove(e); return; }
+    if (S.tug.id !== null) { if (e.pointerId === S.tug.id) S.tug.lastP = [x, y]; return; }
+    if (S.stage === 'seed') {
+      const p = seedPos(performance.now());
+      cv.style.cursor = S.sd.mode === 'air' && Math.hypot(x - p.x, y - p.y) < 38 ? 'grab' : 'default';
+      return;
+    }
+    const now = performance.now();
+    let hot = (stageOpen() && tipHit(x, y)) || (tugOpen(now) && flowerHit(x, y));
+    cv.style.cursor = hot ? 'grab' : 'default';
+  });
+  cv.addEventListener('pointerleave', () => { S.mouse.on = false; });
+  // keyboard: Space/Enter drops the seed; Space, Enter or ArrowUp grows one step; hold Space/Enter to pull the flower
+  cv.addEventListener('keydown', e => {
+    if (e.key !== ' ' && e.key !== 'Enter' && e.key !== 'ArrowUp') return;
+    e.preventDefault();
+    Sound.init();
+    const now = performance.now();
+    if (S.stage === 'seed') {
+      if (e.key !== 'ArrowUp' && S.sd.mode === 'air' && (!TUT || tutAccepts()) && !e.repeat) dropFrom(airPos(now));
+      return;
+    }
+    if (S.stage === 'growing') {
+      if (stageOpen() && !S.st) { beginStage(); S.auto.prog = Math.floor(S.auto.prog) + 1; stageStep(now); }
+      return;
+    }
+    if (S.stage === 'mature') {
+      if (e.key === 'ArrowUp' || e.repeat) return;
+      if (tugOpen(now)) { const top = S.pts[S.pts.length - 1]; startTug('kb', [top.x, top.y]); S.tug.kb = true; }
+      return;
+    }
+    const top = S.pts.length > 1 ? S.pts[S.pts.length - 1] : { x: baseX, y: baseY - 4 };
+    act(top.x, top.y);
+  });
+  cv.addEventListener('keyup', e => { if (e.key === ' ' || e.key === 'Enter') endTug('kb'); });
+  cv.addEventListener('blur', () => endTug('kb'));
+  $('again').addEventListener('click', () => { reset(); cv.focus({ preventScroll: true }); });
+
+  // ---------- Update ----------
+  function update(now) {
+    const idle = S.lastClick ? now - S.lastClick : 0;
+    const dt = S.lastT ? Math.min(1 / 30, Math.max(0.001, (now - S.lastT) / 1000)) : 1 / 60;
+    S.lastT = now;
+    for (let left = dt; left > 0; left -= 1 / 120) { const h = Math.min(left, 1 / 120); stepSpring(S.pull, h); stepSpring(S.bend, h); }
+    tugPhysics(now, dt);
+    const fhT = S.stage === 'mature' && (S.tug.id !== null || (S.mouse.on && flowerHit(S.mouse.x, S.mouse.y))) ? 1.07 : 1;
+    S.fh += (fhT - S.fh) * Math.min(1, dt * 14);
+    S.shake *= 0.93; S.kick *= 0.95;
+    S.crack += ((S.stage === 'seed' || (S.stage === 'choosing' && S.step === 0) ? 0 : 1) - S.crack) * 0.05;
+    S.roots.forEach(r => r.g += (1 - r.g) * 0.03);
+    S.segs.forEach(s => s.g += (1 - s.g) * (s.fast ? 0.16 : 0.06));
+    S.branches.forEach(b => b.segs.forEach(s => s.g += (1 - s.g) * (b.kind === 'fast' ? 0.14 : 0.05)));
+    S.leaves.forEach(l => l.g += (1 - l.g) * (l.kind === 'fast' ? 0.12 : 0.05));
+    S.shrooms.forEach(m => m.g += (1 - m.g) * 0.02);
+    // tints and sky ease toward the chosen state so each choice visibly lands
+    const T = S.M.tint;
+    S.tint.h += (T.h - S.tint.h) * 0.03; S.tint.s += (T.s - S.tint.s) * 0.03; S.tint.l += (T.l - S.tint.l) * 0.03;
+    S.sky.sun += ((S.M.sun ? 1 : 0) - S.sky.sun) * 0.02;
+    S.sky.moon += ((S.M.moon ? 1 : 0) - S.sky.moon) * 0.02;
+    S.sky.shade += ((S.M.shade ? 1 : 0) - S.sky.shade) * 0.02;
+
+    const total = S.segs.reduce((a, s) => a + s.len, 0);
+    S.scale += ((total > availH ? availH / total : 1) - S.scale) * 0.05;
+
+    let breathT = 0.12;
+    if (S.stage === 'growing' && idle > REST_AFTER) breathT = 1;
+    if (S.stage === 'choosing' && S.segs.length) breathT = 0.6;
+    if (S.stage === 'flowering' || S.stage === 'mature' || S.stage === 'picked') breathT = 0.75;
+    S.dim += (((S.stage === 'picked') ? 0.72 : 0) - S.dim) * 0.03;
+    if (S.stage === 'picked' && S.flower) {
+      const p = S.pick;
+      p.prog = Math.min(1, (now - p.t0) / 1700);
+      const pose = pickPose();
+      let prox = 0;
+      if (S.mouse.on) prox = clamp(1 - Math.hypot(S.mouse.x - pose.x, S.mouse.y - pose.y) / (flowerRadius() * pose.s * 2.4), 0, 1);
+      const target = p.prog < 1 ? (S.flower.bud ? 0.12 : 0.85)
+        : S.flower.bud ? 0.1 + 0.5 * prox : (S.M.warmth ? 0.62 : 0.5) + 0.48 * prox;
+      S.flower.open += (target - S.flower.open) * 0.05;
+      if (p.prog >= 1 && !p.shown && now - p.t0 > 2000) { p.shown = true; showFinal(); if (TUT) tutPicked(); }
+    }
+    S.breath += (breathT - S.breath) * 0.02;
+
+    if (S.stage === 'seed') {
+      const sd = S.sd;
+      seedPhysics(now, dt);
+      if (sd.mode === 'air' && S.statusKey !== 'missed') setStatus('seed', '<b>Drag the seed</b> over the hole.');
+      if (sd.mode === 'drag') setStatus('drag', seedAligned() ? 'Let go to plant it.' : 'Bring it over the hole.');
+    }
+    if (S.stage === 'germinating' && now - S.germAt > 1200) {
+      S.segs.push({ len: U * 0.55 * S.M.segLen, dA: rand(-0.06, 0.06), g: 0, fast: false });
+      S.leaves.push(makeLeaf(0, 1, -1, -0.2, 9 * k, 0.48, 'calm', 104, 36, 44));
+      S.leaves.push(makeLeaf(0, 1, 1, -0.2, 9 * k, 0.48, 'calm', 100, 36, 46));
+      S.stage = 'growing'; S.lastClick = now;
+      setStatus('sprout', 'A sprout. <b>Grab its tip and stretch it upward</b> to make it grow.');
+      if (TUT) tutSprouted();
+    }
+    tickAuto(now);
+    if (TUT) tutTick(now);
+    if (S.stage === 'growing') {
+      if (now - S.rushAt < 900) setStatus('rush', '<b>Too fast.</b> Yanking it twists the stem.');
+      else if (S.autoDone) setStatus('auto', S.step >= STEPS.length ? 'Growing toward a flower\u2026' : 'Growing\u2026 let it take its time.');
+      else if (S.st) setStatus('stretch', 'Growing\u2026 <b>keep pulling upward</b>, slowly.');
+      else if (S.auto) setStatus('more', 'It wants to grow more. <b>Keep stretching it upward.</b>');
+      else if (S.statusKey !== 'picked' && S.statusKey !== 'sprout') {
+        setStatus(idle > REST_AFTER ? 'rest' : 'wait', idle > REST_AFTER
+          ? 'It\u2019s resting. <b>Stretch the plant upward</b> when you\u2019re ready.'
+          : '<b>Stretch the plant upward</b> to let it grow.');
+      }
+    }
+    if (S.stage === 'flowering') {
+      setStatus('flower', S.flower.bud ? 'It\u2019s closing into a small bud.' : 'A flower is forming.');
+      S.flower.bloom = Math.min(1, S.flower.bloom + 1 / (60 * (S.flower.bud ? 2 : 2.8)));
+      S.flower.open += ((S.flower.bud ? 0.1 : 0.75) - S.flower.open) * 0.04;
+      if (S.flower.bloom >= 1) { finish(now); if (TUT) tutBloomed(); }
+    }
+    if (S.stage === 'mature' && S.flower) {
+      const top = S.pts[S.pts.length - 1];
+      let prox = 0;
+      if (S.mouse.on && top) prox = clamp(1 - Math.hypot(S.mouse.x - top.x, S.mouse.y - top.y) / (260 * k), 0, 1);
+      const target = S.flower.bud ? 0.08 + 0.42 * prox : (S.M.warmth ? 0.62 : 0.5) + 0.45 * prox;
+      S.flower.open += (target - S.flower.open) * 0.05;
+      if (S.M.wind && !S.flower.bud && now - S.lastPetal > 1100 && top && !reduce) {
+        S.lastPetal = now;
+        S.parts.push({ type: 'petal', x: top.x, y: top.y - 8 * k, vx: rand(0.6, 1.4), vy: rand(-0.3, 0.2), r: rand(0, 6), life: 1, col: pick(S.flower.petals).col });
+      }
+    }
+    S.parts.forEach(p => {
+      if (p.type === 'petal') { p.x += p.vx; p.y += p.vy + 0.35; p.vy += Math.sin(now * 0.003 + p.r) * 0.02; p.r += 0.04; p.life -= 0.006; }
+    });
+    S.parts = S.parts.filter(p => p.type !== 'petal' || (p.life > 0 && p.y < baseY + 10));
+  }
+
+  // ---------- Draw ----------
+  function leafColor(h, s, l, a = 1) {
+    return `hsla(${h + S.tint.h},${clamp(s * S.tint.s, 4, 90)}%,${clamp(l + S.tint.l, 10, 90)}%,${a})`;
+  }
+  function swayA(i, t) {
+    const amp = RM * (S.breath * 0.02 + 0.003);
+    const gust = S.M.wind ? (0.6 + 0.4 * Math.sin(t * 0.0007)) * 0.012 * RM : 0;
+    return amp * Math.sin(t * 0.0011 - i * 0.45) + S.kick * 0.035 * RM * Math.sin(t * 0.024 - i * 0.7) + gust * Math.sin(t * 0.003 - i * 0.5) + S.M.wind * (S.segs[i] ? ease(S.segs[i].g) : 0);
+  }
+  function computePts(t) {
+    const pts = [{ x: baseX, y: baseY - 4, a: 0 }];
+    let a = 0, x = baseX, y = baseY - 4;
+    S.segs.forEach((s, i) => {
+      a += s.dA * ease(s.g) + swayA(i, t);
+      const L = s.len * ease(s.g) * S.scale;
+      x += Math.sin(a) * L; y -= Math.cos(a) * L;
+      pts.push({ x, y, a });
+    });
+    S.tipBase = pts[pts.length - 1];
+    // Rubber-band stretch and lean while growing, pull while picking: the stem bends like a
+    // cantilever sideways and stretches evenly along its length (Grow a Flower / Pick a Flower)
+    const tg = S.tug;
+    const Dx = S.bend.x + tg.D[0] + tg.jx, Dy = -S.pull.x + tg.D[1] + tg.jy;
+    if (pts.length > 1 && Math.abs(Dx) + Math.abs(Dy) > 0.01) {
+      const cum = [0];
+      for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y));
+      const total = cum[cum.length - 1] || 1;
+      for (let i = 1; i < pts.length; i++) {
+        const u = cum[i] / total, wx = (3 * u * u - u * u * u) / 2;
+        pts[i] = { x: pts[i].x + Dx * wx, y: pts[i].y + Dy * u, a: 0 };
+      }
+      for (let i = 1; i < pts.length; i++) pts[i].a = Math.atan2(pts[i].x - pts[i - 1].x, -(pts[i].y - pts[i - 1].y));
+    }
+    S.pts = pts;
+    S.branches.forEach((b, bi) => {
+      const p0 = pts[b.seg], p1 = pts[b.seg + 1];
+      if (!p1) { b.pts = []; return; }
+      let bx = p0.x + (p1.x - p0.x) * b.f, by = p0.y + (p1.y - p0.y) * b.f;
+      const g0 = b.segs.length ? ease(b.segs[0].g) : 0;
+      let ba = p1.a + b.side * b.a0 * g0;
+      b.pts = [{ x: bx, y: by, a: ba }];
+      b.segs.forEach((s, i) => {
+        ba += s.dA * ease(s.g) + swayA(b.seg + i + 1, t) * 1.4 + Math.sin(t * 0.0013 + bi) * 0.01 * S.breath * RM;
+        const L = s.len * ease(s.g) * S.scale;
+        bx += Math.sin(ba) * L; by -= Math.cos(ba) * L;
+        b.pts.push({ x: bx, y: by, a: ba });
+      });
+    });
+    return pts;
+  }
+  function catmull(pts) {
+    const out = [];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(pts.length - 1, i + 2)];
+      for (let s = 0; s < 8; s++) {
+        const u = s / 8, u2 = u * u, u3 = u2 * u;
+        out.push({
+          x: 0.5 * (2 * p1.x + (-p0.x + p2.x) * u + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * u2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * u3),
+          y: 0.5 * (2 * p1.y + (-p0.y + p2.y) * u + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * u2 + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * u3),
+          seg: i,
+        });
+      }
+    }
+    if (pts.length) out.push({ ...pts[pts.length - 1], seg: pts.length - 2 });
+    return out;
+  }
+
+  function drawSky(t) {
+    const sx = W * 0.82, sy = Math.max(110, H * 0.18);
+    if (S.sky.sun > 0.01) {
+      const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, Math.max(W, H) * 0.6);
+      g.addColorStop(0, `rgba(240,190,110,${0.16 * S.sky.sun})`); g.addColorStop(1, 'rgba(240,190,110,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = `rgba(245,200,120,${0.5 * S.sky.sun})`;
+      ctx.beginPath(); ctx.arc(sx, sy, 16, 0, Math.PI * 2); ctx.fill();
+    }
+    if (S.sky.moon > 0.01) {
+      const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, Math.max(W, H) * 0.5);
+      g.addColorStop(0, `rgba(180,200,235,${0.1 * S.sky.moon})`); g.addColorStop(1, 'rgba(180,200,235,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = `rgba(225,232,245,${0.6 * S.sky.moon})`;
+      ctx.beginPath(); ctx.arc(sx, sy, 13, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = `rgba(16,19,15,${0.9 * S.sky.moon})`;
+      ctx.beginPath(); ctx.arc(sx + 6, sy - 3, 11, 0, Math.PI * 2); ctx.fill();
+    }
+    if (S.sky.shade > 0.01) {
+      // light leaks in from one side; the plant leans toward it
+      const g = ctx.createLinearGradient(0, 0, W, 0);
+      g.addColorStop(0, `rgba(0,0,0,${0.35 * S.sky.shade})`); g.addColorStop(0.7, 'rgba(0,0,0,0)');
+      g.addColorStop(1, `rgba(200,210,160,${0.07 * S.sky.shade})`);
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    }
+  }
+
+  function drawGround() {
+    const half = Math.min(W * 0.36, 320);
+    const soil = S.picks.soil;
+    const dot = soil === 'clay' ? '#5a4129' : soil === 'sand' ? '#7d6a45' : soil === 'humus' ? '#3a2d20' : C.soil;
+    ctx.strokeStyle = C.soil; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(baseX - half, baseY + 2); ctx.lineTo(baseX + half, baseY + 2); ctx.stroke();
+    ctx.fillStyle = dot;
+    const count = soil === 'sand' ? 90 : soil === 'humus' ? 70 : 46;
+    for (let i = 0; i < count; i++) {
+      const sx = baseX + Math.sin(i * 91.7) * Math.min(W * 0.34, 300);
+      const sy = baseY + 8 + Math.abs(Math.sin(i * 13.1)) * 60;
+      ctx.globalAlpha = 0.5 + 0.5 * Math.abs(Math.sin(i * 3.3));
+      const s = soil === 'sand' ? 1.4 : soil === 'clay' ? 3 : 2;
+      ctx.fillRect(sx, sy, s, s);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawRoots() {
+    ctx.lineCap = 'round';
+    S.roots.forEach(r => {
+      const L = r.len * ease(r.g);
+      ctx.strokeStyle = 'rgba(200,180,140,0.55)';
+      ctx.lineWidth = S.picks.soil === 'clay' ? 1.8 : S.picks.soil === 'sand' ? 0.9 : 1.2;
+      ctx.beginPath();
+      let x = baseX, y = baseY + 4, a = r.a * 0.5;
+      ctx.moveTo(x, y);
+      for (let i = 1; i <= 10; i++) {
+        a += (r.a - a) * 0.15 + Math.sin(r.ph + i * 1.3) * 0.12 * r.w;
+        x += Math.sin(a) * L / 10; y += Math.cos(a) * L / 10;
+        ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    });
+  }
+
+  function drawShrooms(t) {
+    S.shrooms.forEach(m => {
+      const g = ease(clamp(m.g * 1.4 - m.d, 0, 1));
+      if (g < 0.02) return;
+      const x = baseX + m.x, y = baseY + 1, h = 12 * m.s * g, r = 7 * m.s * g;
+      ctx.fillStyle = 'hsl(40,20%,78%)';
+      ctx.fillRect(x - 1.5 * m.s, y - h, 3 * m.s, h);
+      ctx.fillStyle = `hsl(${m.h},38%,48%)`;
+      ctx.beginPath(); ctx.ellipse(x, y - h, r, r * 0.6, 0, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = 'rgba(240,230,250,0.7)';
+      ctx.beginPath(); ctx.arc(x - r * 0.3, y - h - r * 0.3, 1.1, 0, Math.PI * 2); ctx.fill();
+    });
+  }
+
+  function drawHole(t) {
+    if (S.stage !== 'seed' || S.sd.mode === 'in') return;
+    const h = HOLE(), sd = S.sd;
+    const sp = seedPos(t);
+    const over = sd.mode === 'drag' && seedAligned();
+    // shadow of the seed on the ground: smaller and fainter the higher it floats
+    const lift = clamp((h.y - sp.y) / 260, 0, 1);
+    ctx.fillStyle = `rgba(0,0,0,${0.35 - lift * 0.2})`;
+    ctx.beginPath(); ctx.ellipse(sp.x, h.y + 1, 10 - lift * 5, 2.6 - lift * 1.2, 0, 0, Math.PI * 2); ctx.fill();
+    // the dug hole with a little mound of soil
+    ctx.fillStyle = '#5a4630';
+    ctx.beginPath(); ctx.ellipse(h.x - 25, h.y - 1, 11, 6, -0.15, Math.PI, 0); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(h.x + 24, h.y - 1, 9, 5, 0.15, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = '#3a2d20';
+    ctx.beginPath(); ctx.ellipse(h.x, h.y, 16, 6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#060705';
+    ctx.beginPath(); ctx.ellipse(h.x, h.y + 0.5, 12, 4, 0, 0, Math.PI * 2); ctx.fill();
+    // dotted guide from the floating seed down to the hole
+    if (sd.mode === 'air') {
+      const p = (Math.sin(t * 0.003) + 1) / 2;
+      ctx.save(); ctx.setLineDash([2, 7]); ctx.lineDashOffset = -t * 0.03;
+      ctx.strokeStyle = `rgba(232,227,212,${0.12 + p * 0.12})`; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(sp.x, sp.y + 20); ctx.lineTo(h.x, h.y - 8); ctx.stroke();
+      ctx.restore();
+    }
+    if (sd.mode === 'drag') {
+      const p = (Math.sin(t * 0.008) + 1) / 2;
+      ctx.strokeStyle = over ? `rgba(147,180,198,${0.7 + p * 0.3})` : 'rgba(232,227,212,0.25)';
+      ctx.lineWidth = over ? 2 : 1;
+      ctx.beginPath(); ctx.ellipse(h.x, h.y, 26 + p * 3, 9 + p, 0, 0, Math.PI * 2); ctx.stroke();
+    }
+  }
+
+  function drawSeed(t) {
+    const shakeX = Math.sin(t * 0.09) * S.shake * 4 * RM;
+    const sp = S.stage === 'seed' ? seedPos(t) : { x: baseX, y: baseY - 4 };
+    const x = sp.x + shakeX, y = sp.y;
+    if (S.stage === 'seed' && S.sd.mode === 'air') {
+      const p = (Math.sin(t * 0.0025) + 1) / 2;
+      ctx.strokeStyle = `rgba(232,227,212,${0.08 + p * 0.12})`; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(x, y, 20 + p * 8, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.save(); ctx.translate(x, y);
+    // hover/hold enlargement, stretch along the fall, squash on impact (scaled about the seed's bottom)
+    const sd = S.sd;
+    if (S.stage === 'seed') {
+      const stretch = !reduce && (sd.mode === 'fall' || sd.mode === 'fail') ? Math.min(0.14, Math.abs(sd.vy) / 6000) : 0;
+      const sy = (1 + stretch) * (1 - sd.sq), sx = 1 / Math.sqrt(Math.max(0.5, sy));
+      ctx.translate(0, SEED_R); ctx.scale(sd.hs * sx, sd.hs * sy); ctx.translate(0, -SEED_R);
+    }
+    ctx.rotate(-0.25 + S.shake * Math.sin(t * 0.07) * 0.2);
+    const c = S.crack;
+    [-1, 1].forEach(h => {
+      ctx.save(); ctx.translate(h * c * 2.2, 0); ctx.rotate(h * c * 0.18);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 8, 11, 0, h < 0 ? Math.PI / 2 : -Math.PI / 2, h < 0 ? Math.PI * 1.5 : Math.PI / 2);
+      ctx.closePath();
+      ctx.fillStyle = `hsl(32,${38 - c * 14}%,${38 - c * 12}%)`; ctx.fill();
+      ctx.restore();
+    });
+    ctx.fillStyle = 'rgba(255,240,210,0.18)';
+    ctx.beginPath(); ctx.ellipse(-3, -4, 2.2, 4, 0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawBranches(t) {
+    const w0 = clamp(2.6 + S.growth * 0.14, 2.6, 7) * k * S.M.stemW;
+    ctx.lineCap = 'round';
+    S.branches.forEach(b => {
+      if (b.pts.length < 2) return;
+      const fine = catmull(b.pts), n = fine.length;
+      const bw = w0 * (b.kind === 'fast' ? 0.32 : 0.45);
+      for (let i = 0; i < n - 1; i++) {
+        const u = i / (n - 1);
+        ctx.strokeStyle = leafColor(94 + S.M.stemHue * 0.5, 36, 36 + u * 10);
+        ctx.lineWidth = Math.max(0.9, bw * (1 - u * 0.6));
+        ctx.beginPath(); ctx.moveTo(fine[i].x, fine[i].y); ctx.lineTo(fine[i + 1].x, fine[i + 1].y); ctx.stroke();
+      }
+    });
+  }
+
+  function drawStem(pts, fine, t) {
+    if (pts.length < 2) return;
+    const n = fine.length;
+    const tv = Math.min(1, Math.hypot(S.tug.D[0], S.tug.D[1]) / (snapAtSafe() * 0.56));
+    const thin = (1 - 0.22 * clamp(S.pull.x / (26 * k), 0, 1)) * (1 - 0.28 * tv);   // gummy thinning under tension
+    const w0 = clamp(2.6 + S.growth * 0.14, 2.6, 7) * k * S.M.stemW * thin;
+    ctx.lineCap = 'round';
+    for (let i = 0; i < n - 1; i++) {
+      const u = i / (n - 1);
+      ctx.strokeStyle = leafColor(96 - u * 6 + S.M.stemHue, 32 + u * 8, 30 + u * 14);
+      ctx.lineWidth = Math.max(1.2, w0 * (1 - u * 0.75));
+      ctx.beginPath(); ctx.moveTo(fine[i].x, fine[i].y); ctx.lineTo(fine[i + 1].x, fine[i + 1].y); ctx.stroke();
+    }
+    // twist for rushed segments, a wrapping vine if chosen
+    const wrapLine = (test, col, freq, amp) => {
+      ctx.strokeStyle = col; ctx.lineWidth = 0.9; ctx.beginPath();
+      let open = false;
+      for (let i = 1; i < n - 1; i++) {
+        if (!test(fine[i])) { open = false; continue; }
+        const dx = fine[i + 1].x - fine[i - 1].x, dy = fine[i + 1].y - fine[i - 1].y, d = Math.hypot(dx, dy) || 1;
+        const u = i / (n - 1);
+        const off = Math.sin(i * freq + t * 0.002) * w0 * (1 - u * 0.7) * amp;
+        const x = fine[i].x - dy / d * off, y = fine[i].y + dx / d * off;
+        if (!open) { ctx.moveTo(x, y); open = true; } else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    };
+    wrapLine(p => S.segs[p.seg] && S.segs[p.seg].fast, 'rgba(190,210,120,0.55)', 0.9, 0.9);
+    if (S.M.vine) { ctx.lineWidth = 1.4; wrapLine(() => true, 'rgba(140,180,80,0.8)', 0.45, 1.6); }
+    if (S.M.frost) {
+      ctx.fillStyle = 'rgba(225,240,250,0.85)';
+      for (let i = 4; i < n; i += 9) ctx.fillRect(fine[i].x + 1.5, fine[i].y, 1.5, 1.5);
+    }
+  }
+
+  function leafPose(l, pts, t) {
+    const P = l.br == null ? pts : (S.branches[l.br] ? S.branches[l.br].pts : []);
+    const a0 = P[l.seg], a1 = P[l.seg + 1];
+    if (!a0 || !a1) return null;
+    const x = a0.x + (a1.x - a0.x) * l.f, y = a0.y + (a1.y - a0.y) * l.f;
+    let dir = a1.a - Math.PI / 2 + l.side * (1.0 + l.off);
+    dir += Math.sin(t * 0.0014 + l.seg * 0.8 + l.f * 3) * 0.06 * S.breath * RM;
+    if (S.M.wind) dir += 0.12 * (0.6 + 0.4 * Math.sin(t * 0.0009 + l.seed * 4)) * RM;
+    if (S.stage === 'mature' && S.mouse.on) {
+      const target = Math.atan2(S.mouse.y - y, S.mouse.x - x);
+      const infl = clamp(1 - Math.hypot(S.mouse.x - x, S.mouse.y - y) / (340 * k), 0, 1);
+      const want = clamp(wrap(target - dir), -0.75, 0.75) * infl;
+      l.turn += (want - l.turn) * 0.06;
+    } else l.turn *= 0.95;
+    return { x, y, dir: dir + l.turn };
+  }
+
+  const snapAtSafe = () => S.flower ? snapAt() : 110;
+  // ring and ticks where the stem snapped
+  function drawBurst(now) {
+    const b = S.burst;
+    if (!b) return;
+    const e = (now - b.t0) / 380;
+    if (e >= 1) { S.burst = null; return; }
+    const q = 1 - Math.pow(1 - e, 3), sc = 1.5 * k;
+    ctx.save(); ctx.translate(b.x, b.y);
+    ctx.strokeStyle = `rgba(232,227,212,${0.6 * (1 - e)})`; ctx.lineWidth = 1.8 * (1 - e) + 0.3;
+    ctx.beginPath(); ctx.arc(0, 0, (4 + 20 * q) * sc, 0, Math.PI * 2); ctx.stroke();
+    if (!reduce) {
+      ctx.strokeStyle = `rgba(232,227,212,${1 - e})`; ctx.lineWidth = 1.4; ctx.lineCap = 'round';
+      for (let i = 0; i < 6; i++) {
+        const a = (i * 60 + 30) * Math.PI / 180, r1 = (8 + 13 * q) * sc, r2 = r1 + 6 * (1 - e) * sc;
+        ctx.beginPath(); ctx.moveTo(Math.cos(a) * r1, Math.sin(a) * r1); ctx.lineTo(Math.cos(a) * r2, Math.sin(a) * r2); ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawLeaf(l, pts, t) {
+    const pose = leafPose(l, pts, t);
+    if (!pose) return;
+    const breathe = 1 + Math.sin(t * 0.0016 + l.seg) * 0.035 * S.breath * RM;
+    const L = l.size * ease(l.g) * breathe * Math.max(0.75, S.scale);
+    if (L < 0.5) return;
+    ctx.save(); ctx.translate(pose.x, pose.y); ctx.rotate(pose.dir);
+    if (l.kind === 'curl') {
+      ctx.strokeStyle = S.M.vine ? 'rgba(150,190,90,0.9)' : 'rgba(170,200,110,0.8)';
+      ctx.lineWidth = 1; ctx.beginPath();
+      for (let i = 0; i <= 30; i++) {
+        const u = i / 30, ang = u * Math.PI * 3.2 * l.side, r = L * (1 - u) * 0.5;
+        const px = u * L * 0.9 + Math.cos(ang) * r * 0.3, py = Math.sin(ang) * r * 0.5;
+        i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+      }
+      ctx.stroke(); ctx.restore(); return;
+    }
+    const stalk = L * 0.12, w = L * l.wr, col = leafColor(l.h, l.s, l.l);
+    if (S.M.moon) { ctx.shadowColor = 'rgba(200,215,245,0.45)'; ctx.shadowBlur = 8; }
+    ctx.strokeStyle = col; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(stalk, 0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(stalk, 0);
+    ctx.quadraticCurveTo(stalk + L * 0.45, -w, stalk + L, 0);
+    ctx.quadraticCurveTo(stalk + L * 0.45, w, stalk, 0);
+    ctx.fillStyle = col; ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = 'rgba(16,19,15,0.35)'; ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.moveTo(stalk + L * 0.08, 0); ctx.lineTo(stalk + L * 0.85, 0); ctx.stroke();
+    if (S.M.drops && l.seed < 0.5 && L > 6) {
+      ctx.fillStyle = 'rgba(170,210,240,0.75)';
+      ctx.beginPath(); ctx.arc(stalk + L * 0.9, w * 0.25 + 1.5, 1.8, 0, Math.PI * 2); ctx.fill();
+    }
+    if (S.M.frost && l.seed < 0.6 && L > 6) {
+      ctx.strokeStyle = 'rgba(230,245,255,0.85)'; ctx.lineWidth = 0.8;
+      const fx = stalk + L * 0.55, fy = -w * 0.25, r = 2.2;
+      ctx.beginPath();
+      for (let i = 0; i < 3; i++) { const a = i * Math.PI / 3; ctx.moveTo(fx - Math.cos(a) * r, fy - Math.sin(a) * r); ctx.lineTo(fx + Math.cos(a) * r, fy + Math.sin(a) * r); }
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawFlower(pose, t) {
+    const f = S.flower, b = ease(f.bloom);
+    ctx.save(); ctx.translate(pose.x, pose.y); ctx.rotate(pose.a); ctx.scale(pose.s, pose.s);
+    if (pose.stub) {
+      // the short piece of stem that came off with it, plus one small leaf
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = leafColor(94, 36, 38); ctx.lineWidth = 2 * k;
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(2 * k, 12 * k, -1 * k, 24 * k); ctx.stroke();
+      ctx.save(); ctx.translate(1 * k, 13 * k); ctx.rotate(-0.5);
+      ctx.fillStyle = leafColor(102, 34, 42);
+      ctx.beginPath(); ctx.moveTo(0, 0);
+      ctx.quadraticCurveTo(5 * k, -4 * k, 11 * k, 0); ctx.quadraticCurveTo(5 * k, 4 * k, 0, 0); ctx.fill();
+      ctx.restore();
+    }
+    if (f.glow) { ctx.shadowColor = 'rgba(210,225,255,0.7)'; ctx.shadowBlur = 16; }
+    if (f.bud) {
+      const L = 15 * k * b, o = f.open;
+      ctx.save(); ctx.rotate(-Math.PI / 2);
+      [-1, 1].forEach(s => {
+        ctx.fillStyle = leafColor(100, 34, 40);
+        ctx.beginPath(); ctx.moveTo(0, 0);
+        ctx.quadraticCurveTo(L * 0.3, s * L * 0.42, L * 0.62, s * L * 0.12);
+        ctx.quadraticCurveTo(L * 0.3, s * L * 0.05, 0, 0); ctx.fill();
+      });
+      [-1, 0, 1].forEach(i => {
+        ctx.save(); ctx.rotate(i * o * 0.7);
+        ctx.fillStyle = f.col; ctx.globalAlpha = i === 0 ? 1 : 0.88;
+        ctx.beginPath(); ctx.moveTo(L * 0.1, 0);
+        ctx.quadraticCurveTo(L * 0.5, -L * 0.34, L, 0);
+        ctx.quadraticCurveTo(L * 0.5, L * 0.34, L * 0.1, 0); ctx.fill();
+        ctx.restore();
+      });
+      ctx.restore(); ctx.restore(); return;
+    }
+    ctx.strokeStyle = leafColor(92, 38, 40); ctx.lineWidth = 2 * k;
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -8 * k * b); ctx.stroke();
+    ctx.translate(0, -8 * k * b);
+    ctx.rotate(t * 0.00005 * (reduce ? 0 : 1) * (f.ratio > 0.5 ? 3 : 1));
+    ctx.scale(1, 0.86);
+    const open = f.open, r0 = 3 * k;
+    const rings = Math.max(...f.petals.map(p => p.ring));
+    for (let r = 0; r <= rings; r++) {
+      f.petals.filter(p => p.ring === r).forEach(p => {
+        const len = p.len * b * (0.3 + 0.7 * open), w = len * p.w * (0.6 + 0.4 * open), tip = 1 - p.point * 0.85;
+        ctx.save(); ctx.rotate(p.a);
+        petalPath(ctx, p, r0, len, w, tip);
+        ctx.fillStyle = p.col; ctx.fill();
+        ctx.strokeStyle = 'rgba(16,19,15,0.22)'; ctx.lineWidth = 0.7; ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = 'rgba(16,19,15,0.14)'; petalVein(ctx, p, r0, len, 0.6);
+        if (f.glow) ctx.shadowBlur = 16;
+        ctx.restore();
+      });
+    }
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = f.center;
+    ctx.beginPath(); ctx.arc(0, 0, (4 + f.ratio * 3) * k * b, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = f.dot;
+    f.dots.forEach(d => {
+      ctx.beginPath();
+      ctx.arc(Math.cos(d.a) * d.r * b * (0.5 + open * 0.5), Math.sin(d.a) * d.r * b * (0.5 + open * 0.5), d.s, 0, Math.PI * 2);
+      ctx.fill();
+    });
+    ctx.restore();
+  }
+
+  function drawBee(pts, t, fp) {
+    if (!S.M.bee || pts.length < 2) return;
+    const top = fp || pts[pts.length - 1];
+    const a = t * 0.0012 * (reduce ? 0.3 : 1);
+    const R = (S.flower ? 46 : 34) * k * (fp ? Math.max(1, fp.s * 0.75) : 1);
+    const x = top.x + Math.cos(a) * R, y = top.y - 10 * k + Math.sin(a * 1.7) * R * 0.45;
+    const dir = Math.sin(a) < 0 ? 1 : -1;
+    ctx.save(); ctx.translate(x, y); ctx.scale(dir, 1);
+    const flap = Math.sin(t * 0.06) * 0.5 + 0.5;
+    ctx.fillStyle = 'rgba(230,235,245,0.55)';
+    ctx.beginPath(); ctx.ellipse(-1, -4 - flap * 1.5, 3.2, 2 + flap, -0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#e8b63c';
+    ctx.beginPath(); ctx.ellipse(0, 0, 5, 3.4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#2a2116';
+    ctx.fillRect(-1.5, -3.2, 1.4, 6.4); ctx.fillRect(1.6, -3, 1.2, 6);
+    ctx.restore();
+  }
+
+  function drawParts(t) {
+    S.parts.forEach(p => {
+      if (p.type === 'fly') {
+        const x = p.x + Math.sin(t * 0.0006 * p.sp + p.ph) * 30, y = p.y + Math.cos(t * 0.0008 * p.sp + p.ph) * 18;
+        const a = 0.35 + 0.35 * Math.sin(t * 0.003 + p.ph);
+        ctx.fillStyle = `rgba(220,235,190,${a * S.sky.moon})`;
+        ctx.shadowColor = 'rgba(220,235,190,0.9)'; ctx.shadowBlur = 8;
+        ctx.beginPath(); ctx.arc(x, y, 1.6, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0;
+      } else if (p.type === 'petal') {
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r);
+        ctx.globalAlpha = clamp(p.life, 0, 1); ctx.fillStyle = p.col;
+        ctx.beginPath(); ctx.ellipse(0, 0, 4 * k, 2 * k, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.restore(); ctx.globalAlpha = 1;
+      }
+    });
+  }
+
+  function drawRhythm(now) {
+    const w = rc.width / dpr, h = 26;
+    rctx.clearRect(0, 0, w, h);
+    rctx.strokeStyle = C.soil; rctx.lineWidth = 1;
+    rctx.beginPath(); rctx.moveTo(0, h - 4); rctx.lineTo(w, h - 4); rctx.stroke();
+    const span = 10000;
+    S.marks = S.marks.filter(m => now - m.t < span);
+    S.marks.forEach(m => {
+      const x = w - ((now - m.t) / span) * w, age = (now - m.t) / span;
+      const ht = m.kind === 'fast' ? 18 : m.kind === 'slow' ? 9 : 13;
+      rctx.globalAlpha = 1 - age * 0.8;
+      rctx.strokeStyle = m.kind === 'fast' ? C.warm : m.kind === 'slow' ? C.cool : C.paper;
+      rctx.lineWidth = 2;
+      rctx.beginPath(); rctx.moveTo(x, h - 4); rctx.lineTo(x, h - 4 - ht); rctx.stroke();
+    });
+    rctx.globalAlpha = 1;
+  }
+
+  function frame(now) {
+    update(now);
+    ctx.clearRect(0, 0, W, H);
+    drawSky(now);
+    drawGround();
+    drawRoots();
+    const pts = computePts(now), fine = catmull(pts);
+    drawShrooms(now);
+    drawHole(now);
+    drawSeed(now);
+    drawBranches(now);
+    drawStem(pts, fine, now);
+    S.leaves.forEach(l => { const s = segOf(l); if (s && s.g > l.f * 0.6) drawLeaf(l, pts, now); });
+    const top = pts[pts.length - 1];
+    if (S.stage === 'picked') {
+      // a pale snapped end where the flower used to be
+      ctx.fillStyle = 'rgba(214,226,170,0.9)';
+      ctx.beginPath(); ctx.arc(top.x, top.y, 1.8 * k, 0, Math.PI * 2); ctx.fill();
+      drawParts(now);
+      if (S.dim > 0.01) { ctx.fillStyle = `rgba(16,19,15,${S.dim})`; ctx.fillRect(0, 0, W, H); }
+      const pose = pickPose();
+      const e = ease(S.pick.prog);
+      if (e > 0.05) {
+        const R = flowerRadius() * pose.s * 1.9;
+        const g = ctx.createRadialGradient(pose.x, pose.y, 0, pose.x, pose.y, R);
+        g.addColorStop(0, `rgba(232,227,212,${0.07 * e})`); g.addColorStop(1, 'rgba(232,227,212,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(pose.x, pose.y, R, 0, Math.PI * 2); ctx.fill();
+      }
+      drawFlower(pose, now);
+      drawBee(pts, now, pose);
+    } else {
+      if (S.flower) drawFlower({ x: top.x, y: top.y, a: top.a * 0.6, s: S.fh }, now);
+      if (S.stage === 'mature' && now - S.matureAt > 400) {
+        // quiet pulse inviting the pick
+        const p = (Math.sin(now * 0.003) + 1) / 2;
+        ctx.strokeStyle = `rgba(232,227,212,${0.06 + p * 0.12})`; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(top.x, top.y - 10 * k, (S.flower.bud ? 24 * k : flowerRadius() * S.flower.open + 12) + p * 5, 0, Math.PI * 2); ctx.stroke();
+      }
+      drawBee(pts, now);
+      drawParts(now);
+    }
+    drawBurst(now);
+    if (TUT) drawTutTarget(pts, now);
+    drawRhythm(now);
+    // fibrous swish while stretching: louder with pull speed and tension
+    const speed = S.st ? clamp(Math.abs(S.st.v) / 600, 0, 1) : 0;
+    Sound.stretch(clamp(S.growth / 19, 0, 1), Math.max(0, S.pull.x / k), speed);
+    requestAnimationFrame(frame);
+  }
+
+  // =====================================================================
+  // ARCHIVE — picked flowers are stored per viewer and decay with age
+  // =====================================================================
+  const archiveEl = $('archive'), gridEl = $('archiveGrid'), countEl = $('archiveCount'), noteEl = $('archiveNote');
+  const LS_KEY = 'grow-archive-v1';
+  let store = null;      // { kind: 'db' | 'local' | 'memory', ... }
+  let records = [];      // newest first
+  let lastFocus = null, tick = null;
+
+  // Decay curve: noticeable within minutes (good for a class demo), fully decayed after 7 days.
+  const FULL_DECAY_MIN = 7 * 24 * 60;
+  function decayOf(t) {
+    const mins = Math.max(0, (Date.now() - t) / 60000);
+    return clamp(Math.log10(1 + mins) / Math.log10(1 + FULL_DECAY_MIN), 0, 1);
+  }
+  function stageOf(d) { return d < 0.25 ? 'Fresh' : d < 0.5 ? 'Wilting' : d < 0.9 ? 'Withered' : 'Decayed'; }
+  function ageText(t) {
+    const s = Math.max(0, (Date.now() - t) / 1000);
+    if (s < 60) return 'just now';
+    const m = s / 60; if (m < 60) return `${Math.floor(m)} min ago`;
+    const h = m / 60; if (h < 24) return `${Math.floor(h)} h ago`;
+    const d = h / 24; return `${Math.floor(d)} day${Math.floor(d) > 1 ? 's' : ''} ago`;
+  }
+  const fmtDate = t => new Date(t).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+
+  function readLocal() {
+    try { const v = JSON.parse(localStorage.getItem(LS_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return null; }
+  }
+  function writeLocal() {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(records)); return true; } catch (e) { return false; }
+  }
+
+  async function initStore() {
+    // fallback first so the page works immediately
+    const local = readLocal();
+    store = local ? { kind: 'local' } : { kind: 'memory' };
+    records = local || [];
+    renderCount();
+    try {
+      const db = await window.claude?.use?.('db');
+      const user = await window.claude?.use?.('user');
+      const uid = user ? await user.id() : null;
+      if (!db || !uid) return;
+      const col = db.collection('data/users/' + uid);
+      store = { kind: 'db', col };
+      col.orderBy('pickedAt', 'desc').limit(500).onSnapshot(snap => {
+        records = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderCount();
+        if (!archiveEl.hidden) renderArchive();
+      }, () => {});
+    } catch (e) { /* stay on the browser fallback */ }
+  }
+
+  function snapshotFlower(f) {
+    const r = v => Math.round(v * 100) / 100;
+    if (f.bud) return { bud: true, col: f.col, glow: !!f.glow, kk: r(k) };
+    return {
+      bud: false, ratio: r(f.ratio), glow: !!f.glow, center: f.center, dot: f.dot, kk: r(k),
+      shapes: f.shapes,
+      petals: f.petals.map(p => ({ ring: p.ring, shape: p.shape, flip: p.flip, seed: p.seed, a: r(p.a), len: r(p.len), w: r(p.w), point: r(p.point), col: p.col })),
+      dots: f.dots.map(d => ({ a: r(d.a), r: r(d.r), s: r(d.s) })),
+    };
+  }
+
+  async function addToArchive() {
+    if (!S.flower || !S.result) return;
+    const btn = $('keep');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    const rec = {
+      name: S.result.name, path: S.result.path, skipped: S.result.skipped, note: S.result.note, kind: S.result.kind, petals: S.result.petals || '',
+      pickedAt: Date.now(), flower: snapshotFlower(S.flower), v: 1,
+    };
+    let ok = true;
+    if (store.kind === 'db') {
+      try { await store.col.add(rec); } catch (e) { ok = false; }
+      if (!ok) { store = { kind: 'local' }; ok = true; records.unshift(rec); writeLocal(); }
+    } else {
+      records.unshift(rec);
+      if (store.kind === 'local' && !writeLocal()) store = { kind: 'memory' };
+    }
+    btn.textContent = ok ? 'In the archive' : 'Could not save';
+    if (TUT) tutArchived();
+    renderCount();
+    const ab = $('openArchive'); ab.classList.add('bump'); setTimeout(() => ab.classList.remove('bump'), 350);
+  }
+
+  function renderCount() { countEl.textContent = records.length; }
+
+  function renderArchive() {
+    noteEl.textContent = store.kind === 'db' ? 'Saved to your account. Only you can see your archive.'
+      : store.kind === 'local' ? 'Saved in this browser only.'
+      : 'Storage is unavailable here, so this archive lasts until you close the page.';
+    if (!records.length) {
+      gridEl.innerHTML = '<div class="empty"><b>No flowers yet.</b>Grow a plant, pick its flower, then choose “Add to archive”.</div>';
+      return;
+    }
+    gridEl.innerHTML = '';
+    records.forEach((rec, i) => {
+      const d = decayOf(rec.pickedAt);
+      const card = document.createElement('article');
+      card.className = 'card';
+      card.style.setProperty('--d', d.toFixed(3));
+      const path = (rec.path && rec.path.length) ? rec.path.join(' → ') + (rec.skipped ? ` (+${rec.skipped} unreached)` : '') : 'No choices made';
+      card.innerHTML = `
+        <canvas aria-label=""></canvas>
+        <div class="body">
+          <div class="row"><h3></h3><span class="chip"></span></div>
+          <div class="decay" aria-hidden="true"><b></b></div>
+          <div class="row"><time></time><span class="age"></span></div>
+          <div class="path"></div>
+          <p></p>
+        </div>`;
+      card.querySelector('h3').textContent = rec.name || 'Unnamed flower';
+      card.querySelector('.chip').textContent = stageOf(d);
+      const tm = card.querySelector('time');
+      tm.textContent = fmtDate(rec.pickedAt); tm.dateTime = new Date(rec.pickedAt).toISOString();
+      card.querySelector('.age').textContent = ageText(rec.pickedAt);
+      card.querySelector('.path').textContent = path;
+      card.querySelector('p').textContent = [rec.petals, rec.note].filter(Boolean).join(' ');
+      const c = card.querySelector('canvas');
+      c.setAttribute('aria-label', `${rec.name}, ${stageOf(d).toLowerCase()}, picked ${ageText(rec.pickedAt)}`);
+      gridEl.appendChild(card);
+      requestAnimationFrame(() => drawArchived(c, rec, d));
+    });
+  }
+
+  function refreshDecay() {
+    const cards = gridEl.querySelectorAll('.card');
+    cards.forEach((card, i) => {
+      const rec = records[i]; if (!rec) return;
+      const d = decayOf(rec.pickedAt);
+      card.style.setProperty('--d', d.toFixed(3));
+      card.querySelector('.chip').textContent = stageOf(d);
+      card.querySelector('.age').textContent = ageText(rec.pickedAt);
+      drawArchived(card.querySelector('canvas'), rec, d);
+    });
+  }
+
+  // ---- colour helpers for decay ----
+  function parseHsl(str) {
+    const m = /hsla?\(\s*([-\d.]+)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%/.exec(str || '');
+    return m ? { h: +m[1], s: +m[2], l: +m[3] } : { h: 30, s: 40, l: 60 };
+  }
+  function rot(c, d, seed) {
+    // fade toward a dry, brown-grey; spots get darker
+    const target = { h: 28 + seed * 10, s: 22, l: 30 + seed * 8 };
+    const e = clamp(d * 1.15, 0, 1);
+    let dh = ((target.h - c.h + 540) % 360) - 180;
+    return `hsl(${(c.h + dh * e).toFixed(1)},${(c.s + (target.s - c.s) * e).toFixed(1)}%,${(c.l + (target.l - c.l) * e).toFixed(1)}%)`;
+  }
+  // deterministic per-petal random so a flower decays the same way every time it is drawn
+  function hash(n) { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
+
+  function drawArchived(c, rec, d) {
+    const r = c.getBoundingClientRect();
+    if (!r.width) return;
+    const pr = Math.min(window.devicePixelRatio || 1, 2);
+    c.width = r.width * pr; c.height = r.height * pr;
+    const g = c.getContext('2d');
+    g.setTransform(pr, 0, 0, pr, 0, 0);
+    const w = r.width, h = r.height;
+    g.clearRect(0, 0, w, h);
+    const f = rec.flower;
+    const fx = w / 2, fy = h * 0.4;
+    const radius = f.bud ? 18 * (f.kk || 1) : Math.max(...f.petals.map(p => p.len)) + 4;
+    const sc = (Math.min(w, h) * (f.bud ? 0.2 : 0.3)) / radius;
+    const droop = d * 0.9;               // how far the head bends over
+    const shrink = 1 - d * 0.28;
+
+    // ground line + fallen bits
+    g.strokeStyle = 'rgba(232,227,212,0.08)'; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(w * 0.12, h * 0.9); g.lineTo(w * 0.88, h * 0.9); g.stroke();
+
+    // stem, bending under its own weight as it dries
+    const stemCol = rot({ h: 94, s: 36, l: 38 }, d, 0.3);
+    const tipX = fx + Math.sin(droop) * 26, tipY = fy + (1 - Math.cos(droop)) * 18;
+    g.strokeStyle = stemCol; g.lineWidth = 2.2; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(fx - 4, h * 0.86);
+    g.quadraticCurveTo(fx + 2, h * 0.62, tipX, tipY); g.stroke();
+    // leaf on the stub, curling as it dries
+    g.save(); g.translate(fx - 1, h * 0.7); g.rotate(-0.6 + d * 1.3);
+    g.fillStyle = rot({ h: 102, s: 34, l: 42 }, d, 0.6);
+    const lw = 5 * (1 - d * 0.65);
+    g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(10, -lw, 22 * shrink, d * 4); g.quadraticCurveTo(10, lw, 0, 0); g.fill();
+    g.restore();
+
+    // fallen petals on the ground
+    if (!f.bud) {
+      const fallen = f.petals.filter((p, i) => hash(i + 1) < d * 0.8);
+      fallen.forEach((p, i) => {
+        const x = w * 0.2 + hash(i * 3 + 7) * w * 0.6, y = h * 0.9 - 2 - hash(i * 5 + 2) * 6;
+        g.save(); g.translate(x, y); g.rotate(hash(i + 9) * 3);
+        g.fillStyle = rot(parseHsl(p.col), clamp(d + 0.15, 0, 1), hash(i));
+        g.globalAlpha = 0.85;
+        g.beginPath(); g.ellipse(0, 0, Math.min(10, p.len * sc * 0.18), Math.min(4, p.len * sc * 0.07), 0, 0, Math.PI * 2); g.fill();
+        g.restore();
+      });
+      g.globalAlpha = 1;
+    }
+
+    g.save();
+    g.translate(tipX, tipY);
+    g.rotate(droop * 1.1);
+    g.scale(sc * shrink, sc * shrink * (0.86 + d * 0.1));
+    if (f.glow && d < 0.6) { g.shadowColor = `rgba(210,225,255,${0.6 * (1 - d / 0.6)})`; g.shadowBlur = 14; }
+
+    if (f.bud) {
+      const L = 15 * (f.kk || 1);
+      g.rotate(-Math.PI / 2);
+      [-1, 1].forEach(s => {
+        g.fillStyle = rot({ h: 100, s: 34, l: 40 }, d, 0.4);
+        g.beginPath(); g.moveTo(0, 0);
+        g.quadraticCurveTo(L * 0.3, s * L * 0.42, L * 0.62, s * L * 0.12);
+        g.quadraticCurveTo(L * 0.3, s * L * 0.05, 0, 0); g.fill();
+      });
+      const bc = parseHsl(f.col);
+      [-1, 0, 1].forEach((i, n) => {
+        g.save(); g.rotate(i * 0.08 + i * d * 0.15);
+        g.fillStyle = rot(bc, d, hash(n + 4));
+        const bw = 0.34 * (1 - d * 0.45);
+        g.beginPath(); g.moveTo(L * 0.1, 0);
+        g.quadraticCurveTo(L * 0.5, -L * bw, L * (1 - d * 0.15), 0);
+        g.quadraticCurveTo(L * 0.5, L * bw, L * 0.1, 0); g.fill();
+        g.restore();
+      });
+      g.restore();
+      return;
+    }
+
+    const r0 = 3 * (f.kk || 1);
+    const rings = Math.max(...f.petals.map(p => p.ring));
+    for (let ring = 0; ring <= rings; ring++) {
+      f.petals.forEach((p, i) => {
+        if (p.ring !== ring) return;
+        if (hash(i + 1) < d * 0.8) return; // this one has fallen off
+        const hs = hash(i + 13);
+        const len = p.len * (1 - d * (0.25 + hs * 0.25));
+        const wd = len * p.w * (1 - d * 0.55);          // petals shrivel and narrow
+        const curl = d * (0.4 + hs * 0.8) * (hs > 0.5 ? 1 : -1);
+        g.save();
+        // petals sag toward the ground (canvas "down" after the head's own rotation)
+        const sag = wrap(Math.PI / 2 - p.a) * d * 0.35;
+        g.rotate(p.a + sag);
+        g.transform(1, curl * 0.3, 0, 1, 0, 0); // drying petals twist and curl
+        const tip = 1 - p.point * 0.85;
+        petalPath(g, p, r0, len * (1 - d * 0.1), wd, tip);
+        g.fillStyle = rot(parseHsl(p.col), d, hs);
+        g.fill();
+        g.shadowBlur = 0;
+        // dry edges and spots
+        if (d > 0.2) {
+          g.strokeStyle = `rgba(60,40,22,${0.15 + d * 0.5})`; g.lineWidth = 0.6 / sc; g.stroke();
+          if (hs < d) {
+            g.fillStyle = `rgba(55,36,20,${0.25 + d * 0.4})`;
+            g.beginPath(); g.ellipse(r0 + len * (0.4 + hs * 0.4), 0, len * 0.08, wd * 0.25, 0, 0, Math.PI * 2); g.fill();
+          }
+        } else {
+          g.strokeStyle = 'rgba(16,19,15,0.18)'; g.lineWidth = 0.6 / sc; g.stroke();
+        }
+        g.restore();
+      });
+    }
+    g.shadowBlur = 0;
+    g.fillStyle = rot(parseHsl(f.center || 'hsl(45,80%,55%)'), d, 0.2);
+    g.beginPath(); g.arc(0, 0, (4 + (f.ratio || 0) * 3) * (f.kk || 1) * (1 - d * 0.2), 0, Math.PI * 2); g.fill();
+    g.fillStyle = d > 0.5 ? 'rgba(40,28,16,0.8)' : (f.dot || 'rgba(60,40,20,0.75)');
+    (f.dots || []).forEach((dt, i) => {
+      if (hash(i + 50) < d * 0.6) return;
+      g.beginPath(); g.arc(Math.cos(dt.a) * dt.r * 0.8, Math.sin(dt.a) * dt.r * 0.8, dt.s, 0, Math.PI * 2); g.fill();
+    });
+    g.restore();
+  }
+
+  function openArchive() {
+    lastFocus = document.activeElement;
+    archiveEl.hidden = false;
+    renderArchive();
+    $('closeArchive').focus({ preventScroll: true });
+    clearInterval(tick);
+    tick = setInterval(refreshDecay, 20000);
+  }
+  function closeArchive() {
+    archiveEl.hidden = true;
+    clearInterval(tick);
+    (lastFocus && lastFocus.focus ? lastFocus : cv).focus({ preventScroll: true });
+  }
+  $('openArchive').addEventListener('click', openArchive);
+  $('closeArchive').addEventListener('click', closeArchive);
+  $('keep').addEventListener('click', addToArchive);
+  archiveEl.addEventListener('keydown', e => { if (e.key === 'Escape') closeArchive(); });
+  addEventListener('resize', () => { if (!archiveEl.hidden) refreshDecay(); });
+
+  // =====================================================================
+  // TUTORIAL — a short guided run through the whole flow.
+  // After each choice, one click on the plant grows it to the next stage.
+  // =====================================================================
+  const tutEl = $('tut'), startBtn = $('startTut');
+  const TSTEPS = [
+    { id: 'seed',    title: 'Drag the seed into the soil.',    hint: 'Hold the floating seed, bring it right over the hole in the ground, and let go.' },
+    { id: 'soil',    title: 'Choose a soil.',                  hint: 'Pick a card at the bottom. Each choice changes how the plant looks.', choice: true },
+    { id: 'grow',    title: 'Stretch the plant upward.',       hint: 'Grab the tip and pull up. It grows as you pull, until it needs something new.', next: 'water' },
+    { id: 'water',   title: 'Choose how to water it.',         hint: 'Pick a card at the bottom.', choice: true },
+    { id: 'grow',    title: 'Stretch it upward again.',        hint: 'Pull slowly and it grows calm and even.', next: 'light' },
+    { id: 'light',   title: 'Choose its light.',               hint: 'Pick a card at the bottom.', choice: true },
+    { id: 'grow',    title: 'Stretch the plant upward.',       hint: 'Pull sideways a little and it leans with you.', next: 'friend' },
+    { id: 'friend',  title: 'Choose a companion.',             hint: 'Pick a card at the bottom.', choice: true },
+    { id: 'grow',    title: 'Stretch the plant upward.',       hint: 'Almost there.', next: 'climate' },
+    { id: 'climate', title: 'Choose the weather.',             hint: 'This is the last choice before it blooms.', choice: true },
+    { id: 'grow',    title: 'Stretch it once more to make it bloom.', hint: 'The flower’s petals and colors come from your choices.', next: 'bloom' },
+    { id: 'pick',    title: 'Pull the flower until it snaps.', hint: 'Grab it and pull. The stem resists, then gives. Move your cursor around it first if you like. It reacts to you.' },
+    { id: 'archive', title: 'Click “Add to archive”.',         hint: 'Your flower is kept with today’s date.' },
+    { id: 'end',     title: 'You know the whole flow.',        hint: 'Free mode works the same way. Stretch it slowly and the plant stays calm and balanced. Yank it fast and you rush it, so it twists.' },
+  ];
+  const CHOICE_FX = {
+    clay:   'Thick roots spread deep, and a sturdy sprout came up.',
+    sand:   'A few long, thin roots reach down, and a thin sprout came up.',
+    humus:  'Lots of roots spread out, and a sprout came up ready for big leaves.',
+    mist:   'The leaves got smaller and folded upward.',
+    steady: 'The stem will now grow straight and even.',
+    flood:  'The leaves drooped and now hold water drops.',
+    sun:    'A sun rose. The colors brightened.',
+    moon:   'A moon and fireflies appeared. The leaves began to glow.',
+    shade:  'The light comes from one side now, so the plant will lean toward it.',
+    bee:    'A bee arrived. The flower will get extra petals.',
+    vine:   'A vine wrapped itself around the stem.',
+    fungus: 'Purple mushrooms popped up at the base.',
+    wind:   'Wind bent the stem. Petals may blow away later.',
+    frost:  'Frost formed on the leaves and the colors cooled.',
+    warmth: 'The air warmed up. The flower will be bigger and brighter.',
+  };
+
+  const tutCur = () => TSTEPS[TUT.i];
+  const tutAccepts = () => !!TUT && !TUT.busy;
+
+  function renderTut() {
+    if (!TUT) return;
+    const st = tutCur(), last = TSTEPS.length - 1;
+    $('tutStep').textContent = st.id === 'end' ? 'Tutorial done' : `Step ${TUT.i + 1} of ${last}`;
+    $('tutBar').style.width = `${(TUT.i / last) * 100}%`;
+    $('tutTitle').textContent = TUT.busy ? TUT.busy : st.title;
+    $('tutHint').textContent = TUT.busy ? '' : st.hint;
+    const fx = $('tutFxLine');
+    fx.hidden = !TUT.fx; fx.textContent = TUT.fx || '';
+    $('tutEnd').hidden = st.id !== 'end';
+  }
+  // finish the current step: say what happened, move on
+  function tutAdvance(fx) {
+    TUT.busy = null;
+    if (fx) TUT.fx = fx;
+    TUT.i = Math.min(TUT.i + 1, TSTEPS.length - 1);
+    const st = tutCur();
+    if (st.choice) openChoice(performance.now());
+    if (st.id === 'archive') setTimeout(() => $('keep').focus({ preventScroll: true }), 50);
+    if (st.id === 'end') setTimeout(() => $('tutFree').focus({ preventScroll: true }), 50);
+    renderTut();
+  }
+
+  $('tutExit').addEventListener('click', exitTutorial);
+  $('tutFree').addEventListener('click', exitTutorial);
+  $('tutArchive').addEventListener('click', openArchive);
+  startBtn.addEventListener('click', startTutorial);
+
+  function startTutorial() {
+    if (!archiveEl.hidden) closeArchive();
+    TUT = { i: 0, fx: '', busy: null };
+    document.body.classList.add('tut-on');
+    tutEl.hidden = false;
+    resize(); reset();
+    renderTut();
+    cv.focus({ preventScroll: true });
+  }
+  function exitTutorial() {
+    TUT = null;
+    document.body.classList.remove('tut-on');
+    tutEl.hidden = true;
+    resize(); reset();
+    cv.focus({ preventScroll: true });
+  }
+
+  function tutAct(x, y, now) {
+    const st = tutCur();
+    // growing and picking are drags (see the input handlers); a click only nudges the plant
+    if (TUT.busy) return;
+    if ((S.stage === 'growing' || S.stage === 'mature') && nearPlant(x, y)) S.kick = 0.6;
+  }
+
+  // a stretched stage has finished growing: bloom, or move on to the next choice
+  function tutGrowDone(next) {
+    if (!TUT) return;
+    if (next === 'bloom') { TUT.busy = 'A flower is opening…'; renderTut(); startFlower(performance.now(), false); }
+    else tutAdvance(performance.now() - S.rushAt < 4000 ? 'You yanked it, so it grew twisted, with small crowded leaves.' : 'It grew taller, with new branches and leaves.');
+  }
+  function tutChoice(st, o) {
+    if (tutCur().id !== st.key) return;
+    if (st.key === 'soil') { TUT.busy = 'Planting…'; TUT.pendingFx = CHOICE_FX[o.id]; renderTut(); return; }
+    tutAdvance(`${o.en}: ${CHOICE_FX[o.id] || o.hint}`);
+  }
+  function tutSprouted() {
+    if (!TUT || tutCur().id !== 'soil' || !TUT.pendingFx) return;
+    const fx = TUT.pendingFx; TUT.pendingFx = null;
+    tutAdvance(fx);
+  }
+  function tutTick() {}
+  function tutPlanted() {
+    if (!TUT || tutCur().id !== 'seed') return;
+    tutAdvance('The seed dropped into the ground. Now choose what soil it grows in.');
+  }
+  function tutBloomed() {
+    if (!TUT || tutCur().id !== 'grow') return;
+    const f = S.flower;
+    tutAdvance(`It bloomed: ${SHAPE_NAME[f.shapes[0]]} outer petals and ${SHAPE_NAME[f.shapes[1]]} inner petals, shaped by your choices.`);
+  }
+  function tutPicked() {
+    if (!TUT || tutCur().id !== 'pick') return;
+    tutAdvance('The stem snapped and you picked it. The message below sums up how it grew.');
+  }
+  function tutArchived() {
+    if (!TUT || tutCur().id !== 'archive') return;
+    tutAdvance('It’s in your archive now. The longer it stays there, the more it decays.');
+  }
+
+  // a dashed ring marks where to click
+  function drawTutTarget(pts, now) {
+    if (TUT.busy) return;
+    const st = tutCur();
+    const top = pts[pts.length - 1];
+    let x, y, r;
+    if (st.id === 'seed' && S.stage === 'seed' && (S.sd.mode === 'air' || S.sd.mode === 'fly')) { const sp = seedPos(now); x = sp.x; y = sp.y; r = 30; }
+    else if (st.id === 'grow' && S.stage === 'growing' && top) { x = top.x; y = top.y; r = 30; }
+    else if (st.id === 'pick' && S.stage === 'mature' && top) { x = top.x; y = top.y - 10 * k; r = (S.flower.bud ? 24 * k : flowerRadius() * S.flower.open + 14); }
+    else return;
+    const p = (Math.sin(now * 0.005) + 1) / 2;
+    ctx.save();
+    ctx.setLineDash([5, 6]);
+    ctx.lineDashOffset = -now * 0.02;
+    ctx.strokeStyle = `rgba(147,180,198,${0.45 + p * 0.45})`;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(x, y, r + p * 4, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
+
+  // the tutorial button only shows before a free-mode plant has started
+  setInterval(() => { const hide = !!TUT || S.stage !== 'seed'; if (startBtn.hidden !== hide) startBtn.hidden = hide; }, 300);
+
+  reset();
+  initStore();
+  requestAnimationFrame(frame);
+})();
+</script>
+
+</body></html>

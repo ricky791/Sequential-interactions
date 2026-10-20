@@ -207,6 +207,33 @@ body.tut-on .status, body.tut-on #again { display: none; }
 .archive-btn:hover { border-color: var(--muted); }
 .archive-btn:focus-visible, .close:focus-visible { outline: 2px solid var(--cool); outline-offset: 3px; }
 .archive-btn.bump { transform: scale(1.12); border-color: var(--paper); }
+/* After a flower is archived: the button calls softly until the archive is opened */
+.archive-btn.beckon { border-color: var(--paper); animation: beckon 1.8s ease-out infinite; }
+@keyframes beckon {
+  0%   { box-shadow: 0 0 0 0 rgba(232,227,212,.5); }
+  70%  { box-shadow: 0 0 0 12px rgba(232,227,212,0); }
+  100% { box-shadow: 0 0 0 0 rgba(232,227,212,0); }
+}
+.archive-tip {
+  position: fixed; z-index: 4;
+  top: calc(env(safe-area-inset-top, 0px) + 76px); right: max(16px, 4vw);
+  font: 500 0.82rem var(--f-body); color: var(--paper);
+  background: color-mix(in srgb, var(--panel) 94%, transparent); backdrop-filter: blur(6px);
+  border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px;
+  display: flex; align-items: center; gap: 8px; cursor: pointer;
+  opacity: 0; transform: translateY(-6px); transition: opacity .35s ease, transform .35s ease;
+}
+.archive-tip.show { opacity: 1; transform: none; animation: nudge 1.8s ease-in-out .6s infinite; }
+.archive-tip::before {           /* pointer up to the Archive button */
+  content: ""; position: absolute; top: -6px; right: 28px; width: 10px; height: 10px;
+  background: inherit; border-left: 1px solid var(--line); border-top: 1px solid var(--line); transform: rotate(45deg);
+}
+.archive-tip b { font: 0.7rem var(--f-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 400; }
+.archive-tip:hover { border-color: var(--muted); }
+.archive-tip:focus-visible { outline: 2px solid var(--cool); outline-offset: 3px; }
+@keyframes nudge { 0%, 100% { transform: none; } 50% { transform: translateY(-4px); } }
+.fly { position: fixed; z-index: 6; pointer-events: none; border-radius: 50%; transform-origin: 50% 50%; }
+@media (max-width: 480px) { .archive-tip { top: calc(env(safe-area-inset-top, 0px) + 80px); } }
 .archive {
   position: fixed; inset: 0; z-index: 10;
   background: color-mix(in srgb, var(--night) 94%, transparent);
@@ -246,7 +273,7 @@ body.tut-on .status, body.tut-on #again { display: none; }
 .archive-note { margin: 0; color: var(--muted); font: 0.72rem var(--f-mono); letter-spacing: 0.04em; }
 @media (max-width: 480px) { .archive-btn { top: calc(env(safe-area-inset-top, 0px) + 34px); } }
 body.done .foot .left { visibility: hidden; }
-@media (prefers-reduced-motion: reduce) { .choice, .final, .opt { transition: none; } .aura i { animation: none; transform: translate(var(--a)); } }
+@media (prefers-reduced-motion: reduce) { .archive-btn.beckon, .archive-tip.show { animation: none; } .choice, .final, .opt { transition: none; } .aura i { animation: none; transform: translate(var(--a)); } }
 </style>
 
 <div class="aura" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
@@ -276,6 +303,7 @@ body.done .foot .left { visibility: hidden; }
 </aside>
 
 <button class="archive-btn" id="openArchive" type="button" aria-haspopup="dialog">Archive <span id="archiveCount">0</span></button>
+<button class="archive-tip" id="archiveTip" type="button" hidden>Your flower is in the archive <b>Open ↑</b></button>
 
 <section class="archive" id="archive" role="dialog" aria-modal="true" aria-labelledby="archiveTitle" hidden>
   <div class="archive-inner">
@@ -586,7 +614,8 @@ body.done .foot .left { visibility: hidden; }
     };
     finalEl.classList.remove('show'); finalEl.setAttribute('aria-hidden', 'true');
     document.body.classList.remove('done');
-    const keep = $('keep'); keep.disabled = false; keep.textContent = 'Add to archive';
+    const keep = $('keep'); keep.disabled = false; keep.textContent = 'Add to archive'; delete keep.dataset.view;
+    if (typeof clearArchiveCue === 'function') clearArchiveCue();
     hideChoice();
     renderPath();
     cv.setAttribute('aria-label', 'A seed. Drag it into the soil, or press Space to drop it.');
@@ -2020,10 +2049,47 @@ body.done .foot .left { visibility: hidden; }
       records.unshift(rec);
       if (store.kind === 'local' && !writeLocal()) store = { kind: 'memory' };
     }
-    btn.textContent = ok ? 'In the archive' : 'Could not save';
     if (TUT) tutArchived();
-    renderCount();
-    const ab = $('openArchive'); ab.classList.add('bump'); setTimeout(() => ab.classList.remove('bump'), 350);
+    // a copy of the flower flies up into the Archive button, which then keeps calling until opened
+    flyToArchive(() => {
+      renderCount();
+      const ab = $('openArchive'); ab.classList.add('bump'); setTimeout(() => ab.classList.remove('bump'), 350);
+      if (!ok) { btn.textContent = 'Could not save'; return; }
+      btn.disabled = false; btn.textContent = 'View archive'; btn.dataset.view = '1';
+      if (archiveEl.hidden) {
+        ab.classList.add('beckon');
+        const tip = $('archiveTip'); tip.hidden = false;
+        requestAnimationFrame(() => tip.classList.add('show'));
+      }
+    });
+  }
+
+  function flyToArchive(done) {
+    const ab = $('openArchive');
+    if (reduce || !S.pick || !S.flower) { done(); return; }
+    const pose = pickPose();
+    const R = Math.max(24, flowerRadius() * pose.s * 1.2), size = Math.round(R * 2);
+    const c = document.createElement('canvas');
+    c.className = 'fly'; c.width = size * dpr; c.height = size * dpr;
+    c.style.width = c.style.height = size + 'px';
+    c.style.left = (pose.x - R) + 'px'; c.style.top = (pose.y - R) + 'px';
+    const g = c.getContext('2d');
+    g.beginPath(); g.arc(c.width / 2, c.height / 2, c.width / 2, 0, Math.PI * 2); g.clip();
+    g.drawImage(cv, (pose.x - R) * dpr, (pose.y - R) * dpr, c.width, c.height, 0, 0, c.width, c.height);
+    document.body.appendChild(c);
+    const r = ab.getBoundingClientRect();
+    const tx = r.left + r.width / 2 - pose.x, ty = r.top + r.height / 2 - pose.y;
+    const end = Math.max(0.06, 22 / size);
+    const anim = c.animate([
+      { transform: 'translate(0, 0) scale(1)', opacity: 1 },
+      { transform: `translate(${tx * 0.4}px, ${Math.min(0, ty) * 0.55 - 50}px) scale(${(0.55 + end) / 2})`, opacity: 1, offset: 0.45 },
+      { transform: `translate(${tx}px, ${ty}px) scale(${end})`, opacity: 0.35 },
+    ], { duration: 950, easing: 'cubic-bezier(.4, 0, .2, 1)' });
+    anim.onfinish = () => { c.remove(); done(); };
+  }
+  function clearArchiveCue() {
+    $('openArchive').classList.remove('beckon');
+    const tip = $('archiveTip'); tip.classList.remove('show'); tip.hidden = true;
   }
 
   function renderCount() { countEl.textContent = records.length; }
@@ -2214,6 +2280,7 @@ body.done .foot .left { visibility: hidden; }
   }
 
   function openArchive() {
+    clearArchiveCue();
     lastFocus = document.activeElement;
     archiveEl.hidden = false;
     renderArchive();
@@ -2228,7 +2295,8 @@ body.done .foot .left { visibility: hidden; }
   }
   $('openArchive').addEventListener('click', openArchive);
   $('closeArchive').addEventListener('click', closeArchive);
-  $('keep').addEventListener('click', addToArchive);
+  $('keep').addEventListener('click', () => $('keep').dataset.view ? openArchive() : addToArchive());
+  $('archiveTip').addEventListener('click', openArchive);
   archiveEl.addEventListener('keydown', e => { if (e.key === 'Escape') closeArchive(); });
   addEventListener('resize', () => { if (!archiveEl.hidden) refreshDecay(); });
 

@@ -560,7 +560,7 @@ body.done .foot .left { visibility: hidden; }
       { id: 'fungus', en: 'Fungus', hint: 'Mushrooms at the base, purple flower center', sw: '#9a6fa8', t: { lunar: 1, hardy: 1 } } ] },
     { key: 'climate', at: 14, en: 'Climate', q: 'Before it blooms, the weather changes.', opts: [
       { id: 'wind', en: 'Wind', hint: 'Bent stem, petals blow away', sw: '#a7b0a0', t: { wild: 2 } },
-      { id: 'frost', en: 'Frost', hint: 'Ice crystals and cooler colors', sw: '#a9d6ee', t: { lunar: 1, hardy: 1 } },
+      { id: 'frost', en: 'Frost', hint: 'A snowstorm, settling snow, cooler colors', sw: '#a9d6ee', t: { lunar: 1, hardy: 1 } },
       { id: 'warmth', en: 'Warmth', hint: 'A bigger, brighter flower', sw: '#ea8a5a', t: { lush: 2 } } ] },
   ];
 
@@ -611,6 +611,7 @@ body.done .foot .left { visibility: hidden; }
       pull: spring(0, 200, 19), bend: spring(0, 200, 19),  // rubber-band stretch and sideways lean of the stem
       tug: freshTug(), burst: null, fh: 1,                 // pull-to-pick
       lastT: 0, tipBase: null, guide: 0,
+      flakes: [], storm: 0, snow: 0,                      // Frost: falling snow, storm strength, settled snow depth
     };
     finalEl.classList.remove('show'); finalEl.setAttribute('aria-hidden', 'true');
     document.body.classList.remove('done');
@@ -692,7 +693,7 @@ body.done .foot .left { visibility: hidden; }
         for (let i = 0; i < 4; i++) S.shrooms.push({ x: rand(-70, 70) * k, s: rand(0.6, 1.2) * k, g: 0, d: i * 0.25, h: rand(270, 300) });
         break;
       case 'wind': M.wind = 0.035; break;
-      case 'frost': M.frost = true; M.tint.h += 40; M.tint.s *= 0.6; M.tint.l += 8; M.bloom = 0.85; break;
+      case 'frost': M.frost = true; M.tint.h += 40; M.tint.s *= 0.6; M.tint.l += 8; M.bloom = 0.85; startSnow(); break;
       case 'warmth': M.warmth = true; M.bloom = 1.22; M.tint.s *= 1.15; break;
     }
   }
@@ -1371,6 +1372,7 @@ body.done .foot .left { visibility: hidden; }
       if (p.prog >= 1 && !p.shown && now - p.t0 > 2000) { p.shown = true; showFinal(); if (TUT) tutPicked(); }
     }
     S.breath += (breathT - S.breath) * 0.02;
+    snowUpdate(now, dt);
 
     if (S.stage === 'seed') {
       const sd = S.sd;
@@ -1552,6 +1554,88 @@ body.done .foot .left { visibility: hidden; }
     });
   }
 
+  // ---------- Frost: a wind-driven snowstorm and snow that settles ----------
+  // Flakes fall in three depths (far, mid, near) and are pushed sideways by gusts; the nearest
+  // ones streak in the wind. Snow builds up over ~15 s on the ground, the leaves and the mushrooms.
+  const LAYERS = [
+    { n: 70, r: [0.6, 1.2], vy: [22, 38], a: 0.35, push: 0.45 },
+    { n: 50, r: [1.1, 1.9], vy: [42, 70], a: 0.6, push: 0.75 },
+    { n: 26, r: [1.8, 2.8], vy: [80, 125], a: 0.85, push: 1 },
+  ];
+  function startSnow() {
+    S.flakes = [];
+    LAYERS.forEach((L, li) => {
+      const n = Math.round(L.n * (reduce ? 0.5 : 1));
+      for (let i = 0; i < n; i++) S.flakes.push({ li, x: rand(-40, W + 40), y: rand(-H, H), r: rand(L.r[0], L.r[1]), vy: rand(L.vy[0], L.vy[1]), ph: rand(0, 6.28) });
+    });
+  }
+  const gust = t => 0.55 + 0.35 * Math.sin(t * 0.00045) + 0.2 * Math.sin(t * 0.0013 + 1.7);
+  const windSpeed = t => (reduce ? 25 : 70 + 170 * Math.max(0, gust(t)));
+  function snowUpdate(now, dt) {
+    if (!S.M.frost) return;
+    S.storm = Math.min(1, S.storm + dt / 2.5);                // the storm rolls in
+    S.snow = Math.min(1, S.snow + dt / 15);                   // and the snow settles
+    const wind = windSpeed(now), slow = reduce ? 0.5 : 1;
+    S.flakes.forEach(f => {
+      const L = LAYERS[f.li];
+      f.y += f.vy * slow * dt;
+      f.x += (wind * L.push + Math.sin(now * 0.0021 + f.ph) * 14) * dt;
+      if (f.y > H + 10) { f.y = rand(-30, -6); f.x = rand(-W * 0.3, W); }
+      if (f.x > W + 30) { f.x = rand(-60, -10); f.y = rand(-20, H); }
+    });
+  }
+  function drawSnowfall(now) {
+    if (!S.M.frost || S.storm < 0.01) return;
+    const wind = windSpeed(now);
+    ctx.save(); ctx.lineCap = 'round';
+    S.flakes.forEach(f => {
+      const L = LAYERS[f.li], a = L.a * S.storm;
+      if (f.li === 2 && !reduce) {                            // near flakes streak along their motion
+        const vx = wind * L.push, len = 0.045;
+        ctx.strokeStyle = `rgba(240,246,252,${a})`; ctx.lineWidth = f.r;
+        ctx.beginPath(); ctx.moveTo(f.x - vx * len, f.y - f.vy * len); ctx.lineTo(f.x, f.y); ctx.stroke();
+      } else {
+        ctx.fillStyle = `rgba(240,246,252,${a})`;
+        ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2); ctx.fill();
+      }
+    });
+    ctx.restore();
+  }
+  // an uneven drift along the ground line, thickest around the plant
+  function drawSnowGround() {
+    if (!S.M.frost || S.snow < 0.01) return;
+    const half = Math.min(W * 0.36, 320) * 1.08, y0 = baseY + 2, depth = 9 * k * S.snow;
+    const N = 48, top = [];
+    for (let i = 0; i <= N; i++) {
+      const u = i / N * 2 - 1, x = baseX + u * half;
+      const edge = 1 - Math.pow(Math.abs(u), 3);
+      const bump = 0.65 + 0.2 * Math.sin(i * 1.7) + 0.15 * Math.sin(i * 0.53 + 2);
+      top.push({ x, y: y0 - depth * edge * bump * (1 + 0.6 * (1 - Math.abs(u))) });
+    }
+    const g = ctx.createLinearGradient(0, y0 - depth * 1.6, 0, y0 + 4 * k);
+    g.addColorStop(0, `rgba(244,248,252,${0.95 * S.snow})`); g.addColorStop(1, `rgba(196,212,232,${0.8 * S.snow})`);
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.moveTo(top[0].x, y0 + 3 * k * S.snow);
+    top.forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.lineTo(top[N].x, y0 + 3 * k * S.snow); ctx.closePath(); ctx.fill();
+    // a few glints
+    ctx.fillStyle = `rgba(255,255,255,${0.7 * S.snow})`;
+    for (let i = 3; i < N; i += 5) ctx.fillRect(top[i].x, top[i].y + 1.5, 1.2, 1.2);
+  }
+  // a cap of snow on the upward-facing edge of a leaf; flatter leaves hold more
+  function leafSnow(stalk, L, w, dir) {
+    if (!S.M.frost || S.snow < 0.02 || L < 5) return;
+    const flat = Math.abs(Math.cos(dir));
+    if (flat < 0.15) return;
+    const side = -Math.cos(dir) < 0 ? -1 : 1;                // which local side faces up
+    const t = Math.min(w * 0.75, (1.2 + 2.6 * flat) * k) * S.snow;
+    ctx.fillStyle = `rgba(242,247,252,${0.92 * S.snow})`;
+    ctx.beginPath(); ctx.moveTo(stalk + L * 0.08, side * w * 0.2);
+    ctx.quadraticCurveTo(stalk + L * 0.45, side * (w + t), stalk + L * 0.96, side * 0.4);
+    ctx.quadraticCurveTo(stalk + L * 0.45, side * (w - t * 0.4), stalk + L * 0.08, side * w * 0.2);
+    ctx.fill();
+  }
+
   function drawShrooms(t) {
     S.shrooms.forEach(m => {
       const g = ease(clamp(m.g * 1.4 - m.d, 0, 1));
@@ -1561,6 +1645,11 @@ body.done .foot .left { visibility: hidden; }
       ctx.fillRect(x - 1.5 * m.s, y - h, 3 * m.s, h);
       ctx.fillStyle = `hsl(${m.h},38%,48%)`;
       ctx.beginPath(); ctx.ellipse(x, y - h, r, r * 0.6, 0, Math.PI, 0); ctx.fill();
+      if (S.M.frost && S.snow > 0.02) {
+        ctx.fillStyle = `rgba(244,248,252,${0.92 * S.snow})`;
+        ctx.beginPath(); ctx.ellipse(x, y - h - r * 0.32, r * 0.78, r * 0.32 * (0.5 + 0.5 * S.snow), 0, Math.PI, 0); ctx.fill();
+        ctx.fillStyle = `hsl(${m.h},38%,48%)`;
+      }
       ctx.fillStyle = 'rgba(240,230,250,0.7)';
       ctx.beginPath(); ctx.arc(x - r * 0.3, y - h - r * 0.3, 1.1, 0, Math.PI * 2); ctx.fill();
     });
@@ -1782,6 +1871,7 @@ body.done .foot .left { visibility: hidden; }
     ctx.quadraticCurveTo(stalk + L * 0.45, w, stalk, 0);
     ctx.fillStyle = col; ctx.fill();
     ctx.shadowBlur = 0;
+    leafSnow(stalk, L, w, pose.dir);
     ctx.strokeStyle = 'rgba(16,19,15,0.35)'; ctx.lineWidth = 0.8;
     ctx.beginPath(); ctx.moveTo(stalk + L * 0.08, 0); ctx.lineTo(stalk + L * 0.85, 0); ctx.stroke();
     if (S.M.drops && l.seed < 0.5 && L > 6) {
@@ -1926,6 +2016,7 @@ body.done .foot .left { visibility: hidden; }
     drawRoots();
     const pts = computePts(now), fine = catmull(pts);
     drawShrooms(now);
+    drawSnowGround();
     drawHole(now);
     drawSeed(now);
     drawBranches(now);
@@ -1937,6 +2028,7 @@ body.done .foot .left { visibility: hidden; }
       ctx.fillStyle = 'rgba(214,226,170,0.9)';
       ctx.beginPath(); ctx.arc(top.x, top.y, 1.8 * k, 0, Math.PI * 2); ctx.fill();
       drawParts(now);
+      drawSnowfall(now);
       if (S.dim > 0.01) { ctx.fillStyle = `rgba(16,19,15,${S.dim})`; ctx.fillRect(0, 0, W, H); }
       const pose = pickPose();
       const e = ease(S.pick.prog);
@@ -1958,6 +2050,7 @@ body.done .foot .left { visibility: hidden; }
       }
       drawBee(pts, now);
       drawParts(now);
+      drawSnowfall(now);
       drawStretchGuide(now);
     }
     drawBurst(now);
@@ -2335,7 +2428,7 @@ body.done .foot .left { visibility: hidden; }
     vine:   'A vine wrapped itself around the stem.',
     fungus: 'Purple mushrooms popped up at the base.',
     wind:   'Wind bent the stem. Petals may blow away later.',
-    frost:  'Frost formed on the leaves and the colors cooled.',
+    frost:  'A snowstorm blew in. Snow is settling on the ground and the leaves, and the colors cooled.',
     warmth: 'The air warmed up. The flower will be bigger and brighter.',
   };
 
